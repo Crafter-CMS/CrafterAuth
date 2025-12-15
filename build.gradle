@@ -10,11 +10,19 @@ plugins {
 }
 
 setGroup("net.elytrium")
-setVersion("1.1.14")
+
+// Read version from VERSION file
+def versionFile = file('VERSION')
+def projectVersion = versionFile.exists() ? versionFile.text.trim() : '1.2.1'
+setVersion(projectVersion)
 
 java {
     setSourceCompatibility(JavaVersion.VERSION_17)
     setTargetCompatibility(JavaVersion.VERSION_17)
+    // Ensure Gradle compiles with JDK 17 regardless of system JDK
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
 }
 
 compileJava {
@@ -210,6 +218,9 @@ sourceSets.main.getJava().srcDir(
             it.getOutputs()
         }
 )
+
+// Note: Automatic version increment removed.
+// Project version is read from VERSION file at configuration time.
 
 assemble.dependsOn(shadowJar)
 

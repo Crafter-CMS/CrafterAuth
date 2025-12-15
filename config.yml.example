@@ -1,0 +1,143 @@
+# ⚠️ ÖRNEK CONFIGURATION DOSYASI
+# Bu dosyayı config.yml olarak kopyalayıp kendi bilgilerinizi doldurun.
+# GİT'E PUSHLANAN GERÇEK config.yml İÇERİSİNDE ASLA GERÇEKLEŞTİRME KIMLİKLERİ OLMAYACAKTIR!
+
+version: "1.5"
+serializer: LEGACY_AMPERSAND
+prefix: "&b&l[ᴄʀᴀꜰᴛᴇʀ] &7&l►&f"
+
+main:
+  auth-time: 60000
+  enable-bossbar: true
+  bossbar-color: BLUE
+  bossbar-overlay: NOTCHED_20
+  min-password-length: 8
+  max-password-length: 71
+  check-password-strength: true
+  unsafe-passwords-file: "unsafe_passwords.txt"
+  online-mode-need-auth: true
+  online-mode-need-auth-strict: true
+  floodgate-need-auth: true
+  force-offline-mode: true
+  force-offline-uuid: false
+  check-premium-priority-internal: false
+  premium-and-floodgate-messages-delay: 1250
+  save-uuid: true
+  save-premium-accounts: false
+  enable-totp: true
+  totp-need-password: true
+  register-need-repeat-password: true
+  change-password-need-old-password: true
+  confirm-keyword: "confirm"
+  offline-mode-prefix: ""
+  online-mode-prefix: ""
+  migration-hash: AUTHME
+  dimension: THE_END
+  purge-cache-millis: 3600000
+  purge-premium-cache-millis: 28800000
+  purge-bruteforce-cache-millis: 28800000
+  bruteforce-max-attempts: 10
+  qr-generator-url: "https://api.qrserver.com/v1/create-qr-code/?data={data}&size=200x200&ecc=M&margin=30"
+  totp-issuer: "LimboAuth by Elytrium"
+  bcrypt-cost: 10
+  login-attempts: 3
+  ip-limit-registrations: 3
+  totp-recovery-codes-amount: 16
+  ip-limit-valid-time: 0
+  allowed-nickname-regex: "^[A-Za-z0-9_]{3,16}$"
+  load-world: false
+  world-file-type: WORLDEDIT_SCHEM
+  world-file-path: "auth.schem"
+  disable-falling: true
+  world-ticks: 1000
+  world-light-level: 15
+  game-mode: ADVENTURE
+  ispremium-auth-url: "https://api.mojang.com/users/profiles/minecraft/%s"
+  status-code-user-exists:
+    - 200
+  status-code-user-not-exists:
+    - 204
+    - 404
+  status-code-rate-limit:
+    - 429
+  user-exists-json-validator-fields:
+    - "name"
+    - "id"
+  json-uuid-field: "id"
+  user-not-exists-json-validator-fields: []
+  on-rate-limit-premium: true
+  on-server-error-premium: true
+  register-command:
+    - "/r"
+    - "/reg"
+    - "/register"
+    - "/kayit"
+  login-command:
+    - "/l"
+    - "/log"
+    - "/login"
+    - "/giris"
+  totp-command:
+    - "/2fa"
+    - "/totp"
+  disable-registrations: false
+  mod:
+    enabled: true
+    login-only-by-mod: false
+    verify-key: null
+  world-coords:
+    x: 0
+    y: 0
+    z: 0
+  auth-coords:
+    x: 47.5
+    y: 43.0
+    z: 61.5
+    yaw: 180.0
+    pitch: 0.0
+  cracked-title-settings:
+    fade-in: 20
+    stay: 120
+    fade-out: 30
+    clear-after-login: true
+  premium-title-settings:
+    fade-in: 10
+    stay: 70
+    fade-out: 20
+  backend-api:
+    enabled: false
+    token: "YOUR_TOKEN_HERE"
+    enabled-endpoints:
+      - "premium_state"
+      - "login_date"
+      - "reg_date"
+      - "uuid"
+      - "premium_uuid"
+      - "token_issued_at"
+  command-permission-state:
+    change-password: PERMISSION
+    destroy-session: PERMISSION
+    premium: PERMISSION
+    totp: PERMISSION
+    unregister: PERMISSION
+    force-change-password: PERMISSION
+    force-register: PERMISSION
+    force-login: PERMISSION
+    force-unregister: PERMISSION
+    reload: PERMISSION
+    help: TRUE
+  strings:
+    # ... (tüm string konfigürasyonları buraya gelecek)
+
+database:
+  storage-type: CRAFTER
+  # ⚠️ VERITABANI CREDENTIALS - GİT'E PUSHLAYMAYIN!
+  hostname: "127.0.0.1:3306"
+  user: "your_db_user"
+  password: "your_db_password"
+  database: "limboauth"
+  connection-parameters: "?autoReconnect=true&initialTimeout=1&useSSL=false"
+  # ⚠️ CRAFTER API CREDENTIALS - GİT'E PUSHLAYMAYIN!
+  api-url: "https://api.crafter.net.tr"
+  license-key: "YOUR_LICENSE_KEY_HERE"
+  api-secret: "YOUR_API_SECRET_HERE"

@@ -97,6 +97,8 @@ public class AuthSessionHandler implements LimboSessionHandler {
   private static Title loginSuccessfulTitle;
   @Nullable
   private static MigrationHash migrationHash;
+  private static Component registerEnterEmail;
+  private static Component registerInvalidEmail;
 
   private final Dao<RegisteredPlayer, String> playerDao;
   private final Player proxyPlayer;
@@ -121,6 +123,9 @@ public class AuthSessionHandler implements LimboSessionHandler {
   private boolean totpState;
   private String tempPassword;
   private boolean tokenReceived;
+  private boolean awaitingEmail = false;
+  private String pendingPassword;
+  private String pendingPasswordConfirm;
 
   public AuthSessionHandler(Dao<RegisteredPlayer, String> playerDao, Player proxyPlayer, LimboAuth plugin, @Nullable RegisteredPlayer playerInfo) {
     this.playerDao = playerDao;
@@ -217,64 +222,38 @@ public class AuthSessionHandler implements LimboSessionHandler {
     }
 
     String[] args = message.split(" ");
+    
+    // If awaiting email, process email input
+    if (this.awaitingEmail) {
+      this.handleEmailInput(message.trim());
+      return;
+    }
+    
     if (args.length != 0 && this.checkArgsLength(args.length)) {
       Command command = Command.parse(args[0]);
       if (command == Command.REGISTER && !this.totpState && this.playerInfo == null) {
         String password = args[1];
         if (this.checkPasswordsRepeat(args) && this.checkPasswordLength(password) && this.checkPasswordStrength(password)) {
+          // For Crafter CMS, ask for email first
+          if (this.playerDao == null) {
+            this.pendingPassword = password;
+            this.pendingPasswordConfirm = Settings.IMP.MAIN.REGISTER_NEED_REPEAT_PASSWORD ? args[2] : password;
+            this.awaitingEmail = true;
+            this.proxyPlayer.sendMessage(registerEnterEmail);
+            return;
+          }
+          
           this.saveTempPassword(password);
           
-          // For Crafter CMS, we need to handle registration differently
-          if (this.playerDao != null) {
-            // Traditional database registration
-            RegisteredPlayer registeredPlayer = new RegisteredPlayer(this.proxyPlayer).setPassword(password);
+          // Traditional database registration
+          RegisteredPlayer registeredPlayer = new RegisteredPlayer(this.proxyPlayer).setPassword(password);
 
-            try {
-              this.playerDao.create(registeredPlayer);
-              this.playerInfo = registeredPlayer;
-            } catch (SQLException e) {
-              this.proxyPlayer.disconnect(databaseErrorKick);
-              throw new SQLRuntimeException(e);
-            }
-          } else {
-            // Crafter CMS registration - use the API to register the user
-            String ipAddress = this.proxyPlayer.getRemoteAddress().getAddress().getHostAddress();
-            String email = ""; // You might want to get this from the player or make it configurable
-            
-            // Get the plugin instance to access CrafterAuthHandler
-            LimboAuth plugin = (LimboAuth) this.plugin;
-            if (plugin.getCrafterAuthHandler() != null && plugin.getCrafterAuthHandler().isReady()) {
-              CompletableFuture<Boolean> registrationResult = plugin.getCrafterAuthHandler()
-                  .registerUser(this.proxyPlayer.getUsername(), email, password, password, ipAddress);
-              
-              registrationResult.thenAccept(success -> {
-                if (success) {
-                  // Registration successful, create a temporary player object
-                  this.playerInfo = new RegisteredPlayer(this.proxyPlayer).setPassword(password);
-                  
-                  this.proxyPlayer.sendMessage(registerSuccessful);
-                  if (registerSuccessfulTitle != null) {
-                    this.proxyPlayer.showTitle(registerSuccessfulTitle);
-                  }
-
-                  this.plugin.getServer().getEventManager()
-                      .fire(new PostRegisterEvent(this::finishAuth, this.player, this.playerInfo, this.tempPassword))
-                      .thenAcceptAsync(this::finishAuth);
-                } else {
-                  // Registration failed
-                  this.proxyPlayer.sendMessage(Component.text("Registration failed. Please try again."));
-                }
-              }).exceptionally(throwable -> {
-                this.proxyPlayer.sendMessage(Component.text("Registration error: " + throwable.getMessage()));
-                return null;
-              });
-              
-              return; // Exit early as we're handling this asynchronously
-            } else {
-              // Fallback if Crafter API is not available
-              this.proxyPlayer.sendMessage(Component.text("Registration service unavailable. Please try again later."));
-              return;
-            }
+          try {
+            this.playerDao.create(registeredPlayer);
+            this.playerInfo = registeredPlayer;
+          } catch (SQLException e) {
+            this.proxyPlayer.disconnect(databaseErrorKick);
+            throw new SQLRuntimeException(e);
           }
 
           this.proxyPlayer.sendMessage(registerSuccessful);
@@ -448,6 +427,62 @@ public class AuthSessionHandler implements LimboSessionHandler {
     this.plugin.removeAuthenticatingPlayer(this.player.getProxyPlayer().getUsername());
   }
 
+  private void handleEmailInput(String email) {
+    // Basic email validation
+    if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+      this.proxyPlayer.sendMessage(registerInvalidEmail);
+      this.proxyPlayer.sendMessage(registerEnterEmail);
+      return;
+    }
+    
+    // Reset awaiting state
+    this.awaitingEmail = false;
+    
+    // Proceed with Crafter CMS registration
+    String ipAddress = this.proxyPlayer.getRemoteAddress().getAddress().getHostAddress();
+    LimboAuth plugin = (LimboAuth) this.plugin;
+    
+    if (plugin.getCrafterAuthHandler() != null && plugin.getCrafterAuthHandler().isReady()) {
+      CompletableFuture<Boolean> registrationResult = plugin.getCrafterAuthHandler()
+          .registerUser(this.proxyPlayer.getUsername(), email, this.pendingPassword, this.pendingPasswordConfirm, ipAddress);
+      
+      registrationResult.thenAccept(success -> {
+        if (success) {
+          // Registration successful
+          this.playerInfo = new RegisteredPlayer(this.proxyPlayer).setPassword(this.pendingPassword);
+          this.saveTempPassword(this.pendingPassword);
+          
+          this.proxyPlayer.sendMessage(registerSuccessful);
+          if (registerSuccessfulTitle != null) {
+            this.proxyPlayer.showTitle(registerSuccessfulTitle);
+          }
+
+          this.plugin.getServer().getEventManager()
+              .fire(new PostRegisterEvent(this::finishAuth, this.player, this.playerInfo, this.tempPassword))
+              .thenAcceptAsync(this::finishAuth);
+        } else {
+          this.proxyPlayer.sendMessage(Component.text("§cKayıt başarısız. Lütfen tekrar deneyin."));
+          // Reset state for retry
+          this.awaitingEmail = false;
+          this.pendingPassword = null;
+          this.pendingPasswordConfirm = null;
+        }
+      }).exceptionally(throwable -> {
+        this.proxyPlayer.sendMessage(Component.text("§cKayıt hatası: " + throwable.getMessage()));
+        // Reset state
+        this.awaitingEmail = false;
+        this.pendingPassword = null;
+        this.pendingPasswordConfirm = null;
+        return null;
+      });
+    } else {
+      this.proxyPlayer.sendMessage(Component.text("§cKayıt servisi kullanılamıyor. Lütfen daha sonra tekrar deneyin."));
+      this.awaitingEmail = false;
+      this.pendingPassword = null;
+      this.pendingPasswordConfirm = null;
+    }
+  }
+
   private void sendMessage(boolean sendTitle) {
     if (this.totpState) {
       this.proxyPlayer.sendMessage(totp);
@@ -616,6 +651,8 @@ public class AuthSessionHandler implements LimboSessionHandler {
     registerPasswordUnsafe = serializer.deserialize(Settings.IMP.MAIN.STRINGS.REGISTER_PASSWORD_UNSAFE);
     loginSuccessful = serializer.deserialize(Settings.IMP.MAIN.STRINGS.LOGIN_SUCCESSFUL);
     sessionExpired = serializer.deserialize(Settings.IMP.MAIN.STRINGS.MOD_SESSION_EXPIRED);
+    registerEnterEmail = serializer.deserialize(Settings.IMP.MAIN.STRINGS.REGISTER_ENTER_EMAIL);
+    registerInvalidEmail = serializer.deserialize(Settings.IMP.MAIN.STRINGS.REGISTER_INVALID_EMAIL);
     if (Settings.IMP.MAIN.STRINGS.LOGIN_SUCCESSFUL_TITLE.isEmpty() && Settings.IMP.MAIN.STRINGS.LOGIN_SUCCESSFUL_SUBTITLE.isEmpty()) {
       loginSuccessfulTitle = null;
     } else {

@@ -95,3 +95,28 @@ run/
 
 # Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
 !gradle-wrapper.jar
+
+# ============================================
+# SECURITY: Plugin Config Files (Contains Secrets)
+# ============================================
+plugins/*/config.yml
+plugins/*/config/
+config.yml
+
+# ============================================
+# SECURITY: Sensitive Environment & Credentials
+# ============================================
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.jks
+
+# ============================================
+# IDE & Editor Files
+# ============================================
+.vscode/
+*.swp
+*.swo
+*~

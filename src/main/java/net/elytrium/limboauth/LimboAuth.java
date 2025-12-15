@@ -128,12 +128,12 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 
 @Plugin(
-    id = "limboauth",
-    name = "LimboAuth",
+    id = "crafterauth",
+    name = "CrafterAuth",
     version = BuildConstants.AUTH_VERSION,
-    url = "https://elytrium.net/",
+    url = "https://crafter.net.tr/",
     authors = {
-        "Elytrium (https://elytrium.net/)",
+        "Crafter (https://crafter.net.tr/)",
     },
     dependencies = {
         @Dependency(id = "limboapi"),
@@ -238,12 +238,72 @@ public class LimboAuth {
     metrics.addCustomChart(new SimplePie("save_uuid", () -> String.valueOf(Settings.IMP.MAIN.SAVE_UUID)));
     metrics.addCustomChart(new SingleLineChart("registered_players", () -> Math.toIntExact(this.playerDao.countOf())));
 
+    // CrafterAuth otomatik güncelleme kontrolü
     this.server.getScheduler().buildTask(this, () -> {
-      if (!UpdatesChecker.checkVersionByURL("https://raw.githubusercontent.com/Elytrium/LimboAuth/master/VERSION", Settings.IMP.VERSION)) {
-        LOGGER.error("****************************************");
-        LOGGER.warn("The new LimboAuth update was found, please update.");
-        LOGGER.error("https://github.com/Elytrium/LimboAuth/releases/");
-        LOGGER.error("****************************************");
+      try {
+        String currentVersion = Settings.IMP.VERSION;
+        LOGGER.info("CrafterAuth surum kontrolu basladi. Calisan surum: " + currentVersion);
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(new URI("https://api.github.com/repos/Crafter-CMS/CrafterAuth/releases/latest"))
+            .header("Accept", "application/vnd.github.v3+json")
+            .GET()
+            .build();
+        
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        LOGGER.debug("GitHub API status: " + response.statusCode());
+        if (response.statusCode() == 200) {
+          JsonObject json = JsonParser.parseString(response.body()).getAsJsonObject();
+          String tag = json.get("tag_name").getAsString();
+          String latestVersion = tag.startsWith("v") ? tag.substring(1) : tag;
+          // Normalize semantic version to major.minor (ignore patch if present)
+          String[] lvPartsRaw = latestVersion.split("\\.");
+          if (lvPartsRaw.length >= 2) {
+            latestVersion = lvPartsRaw[0] + "." + lvPartsRaw[1];
+          }
+          LOGGER.info("GitHub son surum: " + latestVersion + " (tag: " + tag + ")");
+          
+          // Versiyon karşılaştırması (major.minor formatı)
+          try {
+            String[] currentParts = currentVersion.split("\\.");
+            String[] latestParts = latestVersion.split("\\.");
+            
+            int currentMajor = Integer.parseInt(currentParts[0]);
+            int currentMinor = currentParts.length > 1 ? Integer.parseInt(currentParts[1]) : 0;
+            int latestMajor = Integer.parseInt(latestParts[0]);
+            int latestMinor = latestParts.length > 1 ? Integer.parseInt(latestParts[1]) : 0;
+            
+            boolean isOutdated = (latestMajor > currentMajor) || 
+                                 (latestMajor == currentMajor && latestMinor > currentMinor);
+            
+            if (isOutdated) {
+              LOGGER.warn("");
+              LOGGER.warn(" ╔════════════════════════════════════════════════════════╗");
+              LOGGER.warn(" ║                                                        ║");
+              LOGGER.warn(" ║          🔔  YENİ GÜNCELLEME MEVCUT!  🔔              ║");
+              LOGGER.warn(" ║                                                        ║");
+              LOGGER.warn(" ╚════════════════════════════════════════════════════════╝");
+              LOGGER.warn("");
+              LOGGER.warn(" 📦 Mevcut Versiyon: " + currentVersion);
+              LOGGER.warn(" 🎉 Yeni Versiyon: " + latestVersion);
+              LOGGER.warn("");
+              LOGGER.warn(" 📥 İndirme Bağlantısı:");
+              LOGGER.warn("    → https://github.com/Crafter-CMS/CrafterAuth/releases/latest");
+              LOGGER.warn("");
+              LOGGER.warn(" 💡 Güncelleme, yeni özellikler ve hata düzeltmeleri içerir.");
+              LOGGER.warn("    Lütfen en kısa sürede güncelleyin!");
+              LOGGER.warn("");
+            } else {
+              LOGGER.info("✓ CrafterAuth güncel! (v" + currentVersion + ")");
+            }
+          } catch (NumberFormatException e) {
+            LOGGER.debug("Versiyon formatı okunamadı, karşılaştırma atlandı.");
+          }
+        } else {
+          LOGGER.debug("GitHub releases/latest ulasilamadi, status=" + response.statusCode());
+        }
+      } catch (Exception e) {
+        LOGGER.debug("Güncelleme kontrolü yapılamadı: " + e.getMessage());
       }
     }).schedule();
   }
@@ -317,6 +377,22 @@ public class LimboAuth {
       }
     }
 
+    // Copy world file only on first startup and if load-world is enabled
+    try {
+      Path worldFilePath = this.dataDirectory.resolve(Settings.IMP.MAIN.WORLD_FILE_PATH);
+      if (!worldFilePath.toFile().exists() && Settings.IMP.MAIN.LOAD_WORLD) {
+        String resourcePath = "/" + Settings.IMP.MAIN.WORLD_FILE_PATH;
+        try (java.io.InputStream inputStream = this.getClass().getResourceAsStream(resourcePath)) {
+          if (inputStream != null) {
+            Files.copy(inputStream, worldFilePath);
+            LOGGER.info("World file '" + Settings.IMP.MAIN.WORLD_FILE_PATH + "' copied to CrafterAuth folder.");
+          }
+        }
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Could not copy world file: " + e.getMessage());
+    }
+
     this.cachedAuthChecks.clear();
     this.premiumCache.clear();
     this.bruteforceCache.clear();
@@ -330,18 +406,60 @@ public class LimboAuth {
       this.crafterAPIClient = new CrafterAPIClient(Settings.IMP, LOGGER);
       this.crafterAPIClient.initialize().thenAccept(success -> {
         if (success) {
-          LOGGER.info("Crafter CMS API initialized successfully");
-          LOGGER.info("Website info: " + this.crafterAPIClient.getWebsite());
+          LOGGER.info("Crafter CMS API başarıyla başlatıldı");
+          LOGGER.info("");
+          LOGGER.info("  ██████╗██████╗  █████╗ ███████╗████████╗███████╗██████╗ ");
+          LOGGER.info(" ██╔════╝██╔══██╗██╔══██╗██╔════╝╚══██╔══╝██╔════╝██╔══██╗");
+          LOGGER.info(" ██║     ██████╔╝███████║█████╗     ██║   █████╗  ██████╔╝");
+          LOGGER.info(" ██║     ██╔══██╗██╔══██║██╔══╝     ██║   ██╔══╝  ██╔══██╗");
+          LOGGER.info(" ╚██████╗██║  ██║██║  ██║██║        ██║   ███████╗██║  ██║");
+          LOGGER.info("  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝        ╚═╝   ╚══════╝╚═╝  ╚═╝");
+          LOGGER.info("");
+          LOGGER.info(" Hosgeldiniz: " + this.crafterAPIClient.getWebsite().getName());
+          String websiteId = this.crafterAPIClient.getWebsite().getId();
+          String maskedId = websiteId.length() > 7 ? websiteId.substring(0, 7) + "*****" : websiteId;
+          LOGGER.info(" Website ID: " + maskedId);
+          LOGGER.info("");
+          LOGGER.info(" Lisans Durumu: ✓ ");
+          LOGGER.info("");
           
           // Initialize CrafterAuthHandler after successful API initialization
           this.crafterAuthHandler = new CrafterAuthHandler(this.crafterAPIClient, LOGGER);
-          LOGGER.info("CrafterAuthHandler initialized successfully");
+          LOGGER.info("CrafterAuthHandler başarıyla başlatıldı");
         } else {
-          LOGGER.error("Failed to initialize Crafter CMS API");
-          LOGGER.error("Please check your API configuration and license key");
+          LOGGER.error("");
+          LOGGER.error(" ╔═══════════════════════════════════════════════════════╗");
+          LOGGER.error(" ║                                                       ║");
+          LOGGER.error(" ║              ⚠  LİSANS DOĞRULAMA BAŞARISIZ  ⚠        ║");
+          LOGGER.error(" ║                                                       ║");
+          LOGGER.error(" ╚═══════════════════════════════════════════════════════╝");
+          LOGGER.error("");
+          LOGGER.error(" ✗ Crafter CMS API başlatılamadı");
+          LOGGER.error(" ✗ Lisans anahtarınız geçersiz veya süresi dolmuş");
+          LOGGER.error("");
+          LOGGER.error(" → Lütfen yapılandırmanızı kontrol edin:");
+          LOGGER.error("   • API URL: " + Settings.IMP.DATABASE.API_URL);
+          LOGGER.error("   • Lisans Anahtarı: " + (Settings.IMP.DATABASE.LICENSE_KEY.length() > 8 
+              ? Settings.IMP.DATABASE.LICENSE_KEY.substring(0, 8) + "..." 
+              : "AYARLANMAMIŞ"));
+          LOGGER.error("");
+          LOGGER.error(" → İletişim: https://crafter.net.tr/discord");
+          LOGGER.error("");
         }
       }).exceptionally(throwable -> {
-        LOGGER.error("Exception during Crafter CMS API initialization: " + throwable.getMessage(), throwable);
+        LOGGER.error("");
+        LOGGER.error(" ╔═══════════════════════════════════════════════════════╗");
+        LOGGER.error(" ║                                                       ║");
+        LOGGER.error(" ║                 ⚠  BAĞLANTI HATASI  ⚠                ║");
+        LOGGER.error(" ║                                                       ║");
+        LOGGER.error(" ╚═══════════════════════════════════════════════════════╝");
+        LOGGER.error("");
+        LOGGER.error(" ✗ Crafter CMS API başlatılırken hata oluştu");
+        LOGGER.error(" ✗ Hata: " + throwable.getMessage());
+        LOGGER.error("");
+        LOGGER.error(" → Lütfen ağ bağlantınızı ve API URL'nizi kontrol edin");
+        LOGGER.error(" → API URL: " + Settings.IMP.DATABASE.API_URL);
+        LOGGER.error("");
         return null;
       });
       
@@ -613,47 +731,61 @@ public class LimboAuth {
       return;
     }
 
-    RegisteredPlayer registeredPlayer = null;
-    
-    // For Crafter CMS, we'll handle authentication differently
-    if (this.databaseLibrary == DatabaseLibrary.CRAFTER && this.crafterAuthHandler != null && this.crafterAuthHandler.isReady()) {
-      // Use Crafter CMS API to check if user exists
-      try {
-        // For now, we'll use a synchronous approach to avoid blocking
-        // In a production environment, you might want to implement proper async handling
-        CompletableFuture<RegisteredPlayer> userCheck = this.crafterAuthHandler.checkUserExists(nickname);
-        
-        // Wait for the result with a timeout
-        registeredPlayer = userCheck.get(5, TimeUnit.SECONDS);
-        
-        if (registeredPlayer != null) {
-          LOGGER.debug("User {} found in Crafter CMS", nickname);
-        } else {
-          LOGGER.debug("User {} not found in Crafter CMS", nickname);
-        }
-      } catch (Exception e) {
-        LOGGER.warn("Error checking user existence in Crafter CMS: " + e.getMessage());
-        // Fall back to assuming user needs to register
-        registeredPlayer = null;
-      }
-    } else {
-      // Use traditional database lookup
-      registeredPlayer = AuthSessionHandler.fetchInfo(this.playerDao, nickname);
-    }
-
     boolean onlineMode = player.isOnlineMode();
     TaskEvent.Result result = TaskEvent.Result.NORMAL;
 
-    if (onlineMode || isFloodgate) {
+    // For Crafter CMS, handle authentication asynchronously
+    if (this.databaseLibrary == DatabaseLibrary.CRAFTER && this.crafterAuthHandler != null && this.crafterAuthHandler.isReady()) {
+      // Use Crafter CMS API to check if user exists - async
+      this.crafterAuthHandler.checkUserExists(nickname)
+          .thenAccept(registeredPlayer -> {
+            if (registeredPlayer != null) {
+              LOGGER.debug("User {} found in Crafter CMS", nickname);
+            } else {
+              LOGGER.debug("User {} not found in Crafter CMS", nickname);
+            }
+            
+            // Proceed with auth flow after user check
+            this.proceedWithAuthFlow(player, registeredPlayer, onlineMode, isFloodgate, result);
+          })
+          .exceptionally(throwable -> {
+            LOGGER.warn("Error checking user existence in Crafter CMS: " + throwable.getMessage());
+            // Fall back to normal flow without Crafter data
+            this.proceedWithAuthFlow(player, null, onlineMode, isFloodgate, result);
+            return null;
+          });
+      return; // Exit early - async processing continues
+    }
+    
+    // Traditional database lookup
+    RegisteredPlayer registeredPlayer = AuthSessionHandler.fetchInfo(this.playerDao, nickname);
+    this.proceedWithAuthFlow(player, registeredPlayer, onlineMode, isFloodgate, result);
+  }
+
+  /**
+   * Proceed with the authentication flow after user check is complete.
+   */
+  private void proceedWithAuthFlow(Player player, RegisteredPlayer registeredPlayer, boolean onlineMode, boolean isFloodgate, TaskEvent.Result baseResult) {
+    TaskEvent.Result result = baseResult;
+    
+    // For offline-mode (force-offline-mode: true), don't do premium bypass
+    // All players must enter password, regardless of premium status
+    if (!Settings.IMP.MAIN.FORCE_OFFLINE_MODE && (onlineMode || isFloodgate)) {
       if (registeredPlayer == null || registeredPlayer.getHash().isEmpty()) {
         RegisteredPlayer nicknameRegisteredPlayer = registeredPlayer;
-        registeredPlayer = AuthSessionHandler.fetchInfo(this.playerDao, player.getUniqueId());
+        
+        // For Crafter CMS, skip traditional UUID lookup since we don't have playerDao
+        if (this.playerDao != null) {
+          registeredPlayer = AuthSessionHandler.fetchInfo(this.playerDao, player.getUniqueId());
+        }
 
         if (nicknameRegisteredPlayer != null && registeredPlayer == null && nicknameRegisteredPlayer.getHash().isEmpty()) {
           registeredPlayer = nicknameRegisteredPlayer;
           registeredPlayer.setPremiumUuid(player.getUniqueId().toString());
           try {
-            this.playerDao.update(registeredPlayer);
+            if (this.playerDao != null) {
+              this.playerDao.update(registeredPlayer);
+            }
           } catch (SQLException e) {
             throw new SQLRuntimeException(e);
           }
@@ -663,7 +795,9 @@ public class LimboAuth {
           registeredPlayer = new RegisteredPlayer(player).setPremiumUuid(player.getUniqueId());
 
           try {
-            this.playerDao.create(registeredPlayer);
+            if (this.playerDao != null) {
+              this.playerDao.create(registeredPlayer);
+            }
           } catch (SQLException e) {
             throw new SQLRuntimeException(e);
           }
