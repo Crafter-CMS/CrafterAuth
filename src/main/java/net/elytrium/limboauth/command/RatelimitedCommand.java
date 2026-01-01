@@ -28,8 +28,8 @@ public abstract class RatelimitedCommand implements SimpleCommand {
 
   private final Component ratelimited;
 
-  public RatelimitedCommand() {
-    this.ratelimited = LimboAuth.getSerializer().deserialize(Settings.IMP.MAIN.STRINGS.RATELIMITED);
+  public RatelimitedCommand(LimboAuth plugin) {
+    this.ratelimited = LimboAuth.getSerializer().deserialize(plugin.getLanguageManager().getMessages().ratelimited);
   }
 
   @Override

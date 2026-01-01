@@ -72,7 +72,10 @@ dependencies {
     implementation("io.whitfin:siphash:2.0.0")
     implementation("com.google.code.gson:gson:2.10.1")
 
+
     implementation("org.bstats:bstats-velocity:$bstatsVersion")
+    // Discord bot için JDA
+    implementation("net.dv8tion:JDA:5.0.0-beta.24")
 
     compileOnly("com.github.spotbugs:spotbugs-annotations:$spotbugsVersion")
 }
@@ -206,18 +209,14 @@ artifacts {
     archives(sourcesJar)
 }
 
-sourceSets.main.getJava().srcDir(
-        getTasks().register("generateTemplates", Copy) {
-            task -> {
-                String version = getVersion().contains("-") ? "${getVersion()} (git-${getCurrentShortRevision()})" : getVersion()
-                task.getInputs().properties("version": version)
-                task.from(file("src/main/templates")).into(getLayout().getBuildDirectory().dir("generated/sources/templates"))
-                task.expand("version": version)
-            }
-        }.map {
-            it.getOutputs()
-        }
-)
+tasks.register("generateTemplates", Copy) {
+    String version = getVersion().contains("-") ? "${getVersion()} (git-${getCurrentShortRevision()})" : getVersion()
+    inputs.properties(["version": version])
+    from(file("src/main/templates"))
+    into(layout.buildDirectory.dir("generated/sources/templates"))
+    expand(["version": version])
+}
+sourceSets.main.java.srcDir(layout.buildDirectory.dir("generated/sources/templates"))
 
 // Note: Automatic version increment removed.
 // Project version is read from VERSION file at configuration time.

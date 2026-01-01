@@ -48,7 +48,7 @@ public class CrafterAPIClient {
    * Creates a new Crafter API client.
    *
    * @param settings The application settings
-   * @param logger The logger instance
+   * @param logger   The logger instance
    */
   public CrafterAPIClient(Settings settings, Logger logger) {
     this.client = HttpClient.newHttpClient();
@@ -97,13 +97,13 @@ public class CrafterAPIClient {
             if (response.statusCode() == 200) {
               try {
                 JsonObject jsonResponse = JsonParser.parseString(response.body()).getAsJsonObject();
-                
+
                 // Check if success field exists
                 if (!jsonResponse.has("success")) {
                   this.logger.error("License verification failed - Response missing 'success' field");
                   return false;
                 }
-                
+
                 boolean success = jsonResponse.get("success").getAsBoolean();
 
                 if (success) {
@@ -112,23 +112,32 @@ public class CrafterAPIClient {
                     this.logger.error("License verification failed - Response missing 'website' field");
                     return false;
                   }
-                  
+
                   JsonObject websiteData = jsonResponse.get("website").getAsJsonObject();
-                  
+
                   // Check if required website fields exist
                   if (!websiteData.has("id") || !websiteData.has("name")) {
                     this.logger.error("License verification failed - Website data missing required fields");
                     return false;
                   }
-                  
+
                   // Extract URL if available, otherwise use a default value
                   String websiteUrl = websiteData.has("url") ? websiteData.get("url").getAsString() : "";
-                  
+
+                  // Extract license expiration if available
+                  String licenseExpiresAt = null;
+                  if (websiteData.has("license_expires_at")) {
+                    licenseExpiresAt = websiteData.get("license_expires_at").getAsString();
+                    this.logger.debug("License expiration date found: " + licenseExpiresAt);
+                  } else {
+                    this.logger.debug("License expiration date not available in API response.");
+                  }
+
                   this.website = new CrafterWebsite(
                       websiteData.get("id").getAsString(),
                       websiteData.get("name").getAsString(),
-                      websiteUrl
-                  );
+                      websiteUrl,
+                      licenseExpiresAt);
                   return true;
                 } else {
                   this.logger.error("License verification failed - API returned success=false");
@@ -157,8 +166,8 @@ public class CrafterAPIClient {
   /**
    * Authenticate a user (sign in).
    *
-   * @param username The user's username
-   * @param password The user's password
+   * @param username  The user's username
+   * @param password  The user's password
    * @param ipAddress The user's IP address for backend IP limit checks
    * @return The authentication response
    */
@@ -181,12 +190,12 @@ public class CrafterAPIClient {
           .header("X-API-Secret", this.secretKey)
           .header("X-Forwarded-For", ipAddress)
           .header("X-Real-IP", ipAddress);
-      
+
       String originValue = this.getOriginHeaderValue();
       if (originValue != null) {
         requestBuilder.header("Origin", originValue);
       }
-      
+
       HttpRequest request = requestBuilder
           .POST(HttpRequest.BodyPublishers.ofString(this.gson.toJson(requestBody)))
           .build();
@@ -194,11 +203,11 @@ public class CrafterAPIClient {
       return this.client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
           .thenApply(response -> {
             CrafterResponse result = this.parseResponse(response);
-            
+
             if (!result.isSuccess()) {
               this.logger.error("Sign in request failed - " + result.getMessage());
             }
-            
+
             return result;
           })
           .exceptionally(throwable -> {
@@ -208,18 +217,19 @@ public class CrafterAPIClient {
 
     } catch (Exception e) {
       this.logger.error("Sign in request failed during request creation: " + e.getMessage());
-      return CompletableFuture.completedFuture(new CrafterResponse(false, "Request creation failed: " + e.getMessage()));
+      return CompletableFuture
+          .completedFuture(new CrafterResponse(false, "Request creation failed: " + e.getMessage()));
     }
   }
 
   /**
    * Register a new user (sign up).
    *
-   * @param username The user's username
-   * @param email The user's email
-   * @param password The user's password
+   * @param username        The user's username
+   * @param email           The user's email
+   * @param password        The user's password
    * @param passwordConfirm The password confirmation
-   * @param ipAddress The user's IP address for backend IP limit checks
+   * @param ipAddress       The user's IP address for backend IP limit checks
    * @return The registration response
    */
   public CompletableFuture<CrafterResponse> signUp(String username, String email, String password,
@@ -244,12 +254,12 @@ public class CrafterAPIClient {
           .header("X-API-Secret", this.secretKey)
           .header("X-Forwarded-For", ipAddress)
           .header("X-Real-IP", ipAddress);
-      
+
       String originValue = this.getOriginHeaderValue();
       if (originValue != null) {
         requestBuilder.header("Origin", originValue);
       }
-      
+
       HttpRequest request = requestBuilder
           .POST(HttpRequest.BodyPublishers.ofString(this.gson.toJson(requestBody)))
           .build();
@@ -257,11 +267,11 @@ public class CrafterAPIClient {
       return this.client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
           .thenApply(response -> {
             CrafterResponse result = this.parseResponse(response);
-            
+
             if (!result.isSuccess()) {
               this.logger.error("Sign up request failed - " + result.getMessage());
             }
-            
+
             return result;
           })
           .exceptionally(throwable -> {
@@ -271,15 +281,16 @@ public class CrafterAPIClient {
 
     } catch (Exception e) {
       this.logger.error("Sign up request failed during request creation: " + e.getMessage());
-      return CompletableFuture.completedFuture(new CrafterResponse(false, "Request creation failed: " + e.getMessage()));
+      return CompletableFuture
+          .completedFuture(new CrafterResponse(false, "Request creation failed: " + e.getMessage()));
     }
   }
 
   /**
    * Request password reset (forgot password).
    *
-   * @param username The user's username
-   * @param email The user's email
+   * @param username  The user's username
+   * @param email     The user's email
    * @param ipAddress The user's IP address for backend IP limit checks
    * @return The password reset response
    */
@@ -302,12 +313,12 @@ public class CrafterAPIClient {
           .header("X-API-Secret", this.secretKey)
           .header("X-Forwarded-For", ipAddress)
           .header("X-Real-IP", ipAddress);
-      
+
       String originValue = this.getOriginHeaderValue();
       if (originValue != null) {
         requestBuilder.header("Origin", originValue);
       }
-      
+
       HttpRequest request = requestBuilder
           .POST(HttpRequest.BodyPublishers.ofString(this.gson.toJson(requestBody)))
           .build();
@@ -315,11 +326,11 @@ public class CrafterAPIClient {
       return this.client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
           .thenApply(response -> {
             CrafterResponse result = this.parseResponse(response);
-            
+
             if (!result.isSuccess()) {
               this.logger.error("Forgot password request failed - " + result.getMessage());
             }
-            
+
             return result;
           })
           .exceptionally(throwable -> {
@@ -329,7 +340,8 @@ public class CrafterAPIClient {
 
     } catch (Exception e) {
       this.logger.error("Forgot password request failed during request creation: " + e.getMessage());
-      return CompletableFuture.completedFuture(new CrafterResponse(false, "Request creation failed: " + e.getMessage()));
+      return CompletableFuture
+          .completedFuture(new CrafterResponse(false, "Request creation failed: " + e.getMessage()));
     }
   }
 
@@ -343,10 +355,10 @@ public class CrafterAPIClient {
     try {
       if (response.statusCode() == 200) {
         JsonObject jsonResponse = JsonParser.parseString(response.body()).getAsJsonObject();
-        
+
         boolean success = jsonResponse.has("success") && jsonResponse.get("success").getAsBoolean();
         String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
-        
+
         return new CrafterResponse(success, message);
       } else {
         this.logger.error("Response parsing failed - HTTP error status: " + response.statusCode());
@@ -374,8 +386,6 @@ public class CrafterAPIClient {
    * @return A CompletableFuture that completes with the test result
    */
   public CompletableFuture<String> testConnection() {
-    this.logger.info("Testing Crafter CMS API connection...");
-    
     return this.verifyLicense()
         .thenApply(success -> {
           if (success) {
@@ -412,6 +422,109 @@ public class CrafterAPIClient {
   }
 
   /**
+   * Health report class to store status of different services.
+   */
+  public static class APIHealthReport {
+    public boolean licenseValid;
+    public boolean signInService;
+    public boolean signUpService;
+    public boolean userCheckService;
+
+    public int getHealthyCount() {
+      int count = 0;
+      if (licenseValid)
+        count++;
+      if (signInService)
+        count++;
+      if (signUpService)
+        count++;
+      if (userCheckService)
+        count++;
+      return count;
+    }
+  }
+
+  /**
+   * Check if the API endpoints are reachable and functioning.
+   *
+   * @return The health report
+   */
+  public CompletableFuture<APIHealthReport> checkApiHealth() {
+    APIHealthReport report = new APIHealthReport();
+    report.licenseValid = this.isInitialized;
+
+    if (!this.isInitialized) {
+      return CompletableFuture.completedFuture(report);
+    }
+
+    // Check Sign In Service
+    CompletableFuture<Boolean> signInCheck = this.checkEndpointHealth(
+        "/website/v2/" + this.website.getId() + "/auth/signin",
+        "POST",
+        "{\"username\":\"__health_check__\",\"password\":\"dummy\"}");
+
+    // Check Sign Up Service
+    CompletableFuture<Boolean> signUpCheck = this.checkEndpointHealth(
+        "/website/v2/" + this.website.getId() + "/auth/signup",
+        "POST",
+        "{\"username\":\"__health__\",\"email\":\"h@h.c\",\"password\":\"123\",\"confirm_password\":\"123\"}");
+
+    // Check User Check Service (GET)
+    CompletableFuture<Boolean> userCheck = this.checkEndpointHealth(
+        "/website/v2/" + this.website.getId() + "/users/__health__",
+        "GET",
+        null);
+
+    return CompletableFuture.allOf(signInCheck, signUpCheck, userCheck)
+        .thenApply(v -> {
+          report.signInService = signInCheck.join();
+          report.signUpService = signUpCheck.join();
+          report.userCheckService = userCheck.join();
+          return report;
+        });
+  }
+
+  private CompletableFuture<Boolean> checkEndpointHealth(String path, String method, String jsonBody) {
+    try {
+      HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+          .uri(URI.create(this.apiUrl + path))
+          .header("Content-Type", "application/json")
+          .header("X-API-Secret", this.secretKey);
+
+      String originValue = this.getOriginHeaderValue();
+      if (originValue != null) {
+        requestBuilder.header("Origin", originValue);
+      }
+
+      HttpRequest.BodyPublisher body = method.equals("POST")
+          ? HttpRequest.BodyPublishers.ofString(jsonBody)
+          : HttpRequest.BodyPublishers.noBody();
+
+      HttpRequest request = requestBuilder.method(method, body).build();
+
+      return this.client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+          .thenApply(response -> {
+            // Healthy if we get a JSON response with expected error codes (400, 404, 409)
+            // Unhealthy if 5xx or HTML response
+            try {
+              int status = response.statusCode();
+              if (status >= 500)
+                return false;
+
+              // Try to parse JSON
+              JsonParser.parseString(response.body());
+              return true;
+            } catch (Exception e) {
+              return false;
+            }
+          })
+          .exceptionally(t -> false);
+    } catch (Exception e) {
+      return CompletableFuture.completedFuture(false);
+    }
+  }
+
+  /**
    * Check if a user exists and get their information.
    *
    * @param username The username to check
@@ -432,12 +545,12 @@ public class CrafterAPIClient {
           .uri(URI.create(endpoint))
           .header("Content-Type", "application/json")
           .header("X-API-Secret", this.secretKey);
-      
+
       String originValue = this.getOriginHeaderValue();
       if (originValue != null) {
         requestBuilder.header("Origin", originValue);
       }
-      
+
       HttpRequest request = requestBuilder
           .GET()
           .build();
@@ -447,8 +560,9 @@ public class CrafterAPIClient {
             if (response.statusCode() == 200) {
               try {
                 JsonObject jsonResponse = JsonParser.parseString(response.body()).getAsJsonObject();
-                
-                // For user retrieval, the API directly returns user data without a success field
+
+                // For user retrieval, the API directly returns user data without a success
+                // field
                 // Check if the response contains user data by looking for common user fields
                 if (jsonResponse.has("username") && jsonResponse.has("email")) {
                   // This is a valid user response
@@ -478,7 +592,8 @@ public class CrafterAPIClient {
 
     } catch (Exception e) {
       this.logger.error("User check request failed during request creation: " + e.getMessage());
-      return CompletableFuture.completedFuture(new CrafterResponse(false, "Request creation failed: " + e.getMessage()));
+      return CompletableFuture
+          .completedFuture(new CrafterResponse(false, "Request creation failed: " + e.getMessage()));
     }
   }
 

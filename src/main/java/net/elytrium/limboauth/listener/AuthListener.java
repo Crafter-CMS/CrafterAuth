@@ -26,6 +26,7 @@ import com.velocitypowered.api.event.connection.PreLoginEvent;
 import com.velocitypowered.api.event.connection.PreLoginEvent.PreLoginComponentResult;
 import com.velocitypowered.api.event.player.GameProfileRequestEvent;
 import com.velocitypowered.api.proxy.InboundConnection;
+import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.util.UuidUtils;
 import com.velocitypowered.proxy.connection.MinecraftConnection;
 import com.velocitypowered.proxy.connection.client.InitialInboundConnection;
@@ -46,11 +47,14 @@ import net.elytrium.limboauth.floodgate.FloodgateApiHolder;
 import net.elytrium.limboauth.handler.AuthSessionHandler;
 import net.elytrium.limboauth.model.RegisteredPlayer;
 import net.elytrium.limboauth.model.SQLRuntimeException;
+import net.elytrium.limboauth.event.PostAuthorizationEvent;
 import net.kyori.adventure.text.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import net.elytrium.limboauth.staff.StaffDatabase;
 
 // TODO: Customizable events priority
+
 public class AuthListener {
 
   private static final MethodHandle DELEGATE_FIELD;
@@ -66,7 +70,7 @@ public class AuthListener {
     this.playerDao = playerDao;
     this.floodgateApi = floodgateApi;
 
-    this.errorOccurred = LimboAuth.getSerializer().deserialize(Settings.IMP.MAIN.STRINGS.ERROR_OCCURRED);
+    this.errorOccurred = LimboAuth.getSerializer().deserialize(plugin.getLanguageManager().getMessages().errorOccurred);
   }
 
   @Subscribe(order = PostOrder.LATE)
@@ -157,6 +161,19 @@ public class AuthListener {
   @Subscribe
   public void onPostLogin(PostLoginEvent event) {
     UUID uuid = event.getPlayer().getUniqueId();
+    String username = event.getPlayer().getUsername();
+    String ip = event.getPlayer().getRemoteAddress().getAddress().getHostAddress();
+    
+    // Staff kontrolü - UUID'yi kaydet ama henüz Discord DM gönderme
+    StaffDatabase staffDb = this.plugin.getStaffDatabase();
+    if (staffDb != null && staffDb.isStaff(username)) {
+      // Sadece UUID'yi kaydet
+      staffDb.setUUID(username, uuid);
+      
+      // Staff için session'ı temizle - Her girişte şifre + 2FA zorunlu
+      this.plugin.removeCachedAuthCheck(username);
+    }
+
     Runnable postLoginTask = this.plugin.getPostLoginTasks().remove(uuid);
     if (postLoginTask != null) {
       // We need to delay for player's client to finish switching the server, it takes a little time.
@@ -169,19 +186,100 @@ public class AuthListener {
 
   @Subscribe
   public void onLoginLimboRegister(LoginLimboRegisterEvent event) {
-    // Player has completed online-mode authentication, can be sure that the player has premium account
-    if (event.getPlayer().isOnlineMode()) {
-      CachedPremiumUser premiumUser = this.plugin.getPremiumCache(event.getPlayer().getUsername());
+    Player player = event.getPlayer();
+    UUID uuid = player.getUniqueId();
+    String username = player.getUsername();
+    
+    // Normal oyuncu için mevcut akış
+    if (player.isOnlineMode()) {
+      CachedPremiumUser premiumUser = this.plugin.getPremiumCache(username);
       if (premiumUser != null) {
         premiumUser.setForcePremium(true);
       }
 
-      this.plugin.getPendingLogins().remove(event.getPlayer().getUsername());
+      this.plugin.getPendingLogins().remove(username);
     }
 
-    if (this.plugin.needAuth(event.getPlayer())) {
-      event.addOnJoinCallback(() -> this.plugin.authPlayer(event.getPlayer()));
+    if (this.plugin.needAuth(player)) {
+      event.addOnJoinCallback(() -> this.plugin.authPlayer(player));
     }
+  }
+
+  @Subscribe
+  public void onPostAuthorization(PostAuthorizationEvent event) {
+    // Auth başarılı olduktan sonra - sunucuya gitmeden ÖNCE
+    net.elytrium.limboapi.api.player.LimboPlayer limboPlayer = event.getPlayer();
+    Player player = limboPlayer.getProxyPlayer();
+    UUID uuid = player.getUniqueId();
+    String username = player.getUsername();
+    
+    // Staff kontrolü - Discord 2FA gerekli mi?
+    StaffDatabase staffDb = this.plugin.getStaffDatabase();
+    if (staffDb != null && staffDb.isStaff(username)) {
+      String discordId = staffDb.getDiscordId(uuid);
+      if (discordId != null && this.plugin.getStaffAuthHandler() != null) {
+        // Login boss bar'ını gizle
+        net.elytrium.limboauth.handler.AuthSessionHandler.hideLoginBossBar(uuid);
+        
+        // Auth başarılı ama Discord onayı bekle
+        event.setResult(net.elytrium.limboauth.event.TaskEvent.Result.WAIT);
+        
+        String ip = player.getRemoteAddress().getAddress().getHostAddress();
+        
+        // Discord 2FA Boss Bar göster
+        net.kyori.adventure.bossbar.BossBar twoFABossBar = net.kyori.adventure.bossbar.BossBar.bossBar(
+          net.kyori.adventure.text.Component.text("§eDiscord doğrulama için kalan süre: §660 saniye"),
+          1.0f,
+          net.kyori.adventure.bossbar.BossBar.Color.YELLOW,
+          net.kyori.adventure.bossbar.BossBar.Overlay.PROGRESS
+        );
+        limboPlayer.getProxyPlayer().showBossBar(twoFABossBar);
+        
+        // Countdown scheduler
+        final int[] remainingSeconds = {60};
+        com.velocitypowered.api.scheduler.ScheduledTask[] countdownTask = new com.velocitypowered.api.scheduler.ScheduledTask[1];
+        
+        countdownTask[0] = this.plugin.getServer().getScheduler()
+          .buildTask(this.plugin, () -> {
+            remainingSeconds[0]--;
+            if (remainingSeconds[0] > 0) {
+              twoFABossBar.name(net.kyori.adventure.text.Component.text("§eDiscord doğrulama için kalan süre: §6" + remainingSeconds[0] + " saniye"));
+              twoFABossBar.progress((float) remainingSeconds[0] / 60.0f);
+            } else {
+              limboPlayer.getProxyPlayer().hideBossBar(twoFABossBar);
+              if (countdownTask[0] != null) {
+                countdownTask[0].cancel();
+              }
+            }
+          })
+          .repeat(1, java.util.concurrent.TimeUnit.SECONDS)
+          .schedule();
+        
+        // Discord DM gönder ve onay bekle
+        this.plugin.getStaffAuthHandler().verifyBeforeServerTransfer(
+          player, 
+          ip,
+          (approved) -> {
+            // Boss bar'ı kapat
+            limboPlayer.getProxyPlayer().hideBossBar(twoFABossBar);
+            if (countdownTask[0] != null) {
+              countdownTask[0].cancel();
+            }
+            
+            if (approved) {
+              // Onaylandı, sunucuya gönder
+              event.complete(net.elytrium.limboauth.event.TaskEvent.Result.NORMAL);
+            } else {
+              // Reddedildi, disconnect
+              event.completeAndCancel(net.kyori.adventure.text.Component.text("§cDiscord doğrulaması reddedildi veya zaman aşımına uğradı."));
+            }
+          }
+        );
+        return;
+      }
+    }
+    
+    // Normal oyuncu - direkt geç (default Result.NORMAL zaten set)
   }
 
   @Subscribe(order = PostOrder.FIRST)

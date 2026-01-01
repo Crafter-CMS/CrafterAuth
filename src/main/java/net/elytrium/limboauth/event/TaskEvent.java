@@ -76,8 +76,8 @@ public abstract class TaskEvent {
     return this.reason;
   }
 
-  public static void reload() {
-    DEFAULT_REASON = LimboAuth.getSerializer().deserialize(Settings.IMP.MAIN.STRINGS.EVENT_CANCELLED);
+  public static void reload(LimboAuth plugin) {
+    DEFAULT_REASON = LimboAuth.getSerializer().deserialize(plugin.getLanguageManager().getMessages().eventCancelled);
   }
 
   public enum Result {

@@ -36,11 +36,12 @@ public class ForceLoginCommand extends RatelimitedCommand {
   private final Component usage;
 
   public ForceLoginCommand(LimboAuth plugin) {
+    super(plugin);
     this.plugin = plugin;
 
-    this.successful = Settings.IMP.MAIN.STRINGS.FORCE_LOGIN_SUCCESSFUL;
-    this.unknownPlayer = Settings.IMP.MAIN.STRINGS.FORCE_LOGIN_UNKNOWN_PLAYER;
-    this.usage = LimboAuth.getSerializer().deserialize(Settings.IMP.MAIN.STRINGS.FORCE_LOGIN_USAGE);
+    this.successful = plugin.getLanguageManager().getMessages().forceLoginSuccessful;
+    this.unknownPlayer = plugin.getLanguageManager().getMessages().forceLoginUnknownPlayer;
+    this.usage = LimboAuth.getSerializer().deserialize(plugin.getLanguageManager().getMessages().forceLoginUsage);
   }
 
   @Override

@@ -17,7 +17,7 @@
 
 package net.elytrium.limboauth.dependencies.crafter;
 
-import com.velocitypowered.api.proxy.Player;
+// ...existing code...
 import java.util.concurrent.CompletableFuture;
 import net.elytrium.limboauth.model.RegisteredPlayer;
 import org.slf4j.Logger;

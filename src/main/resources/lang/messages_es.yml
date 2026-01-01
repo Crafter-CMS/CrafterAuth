@@ -1,0 +1,144 @@
+# Spanish Language File - Archivo de Idioma Español
+# CrafterAuth v1.1
+
+# System Messages
+reload: "{PRFX} &a¡Recargado exitosamente!"
+errorOccurred: "{PRFX} &c¡Ocurrió un error interno!"
+ratelimited: "{PRFX} &c¡Por favor espere antes de usar esto nuevamente!"
+databaseErrorKick: "{PRFX} &c¡Ocurrió un error de base de datos!"
+
+# Player Messages
+notPlayer: "{PRFX} &c¡La consola no puede ejecutar este comando!"
+notRegistered: "{PRFX} &c¡No estás registrado o tu cuenta es &6PREMIUM&c!"
+crackedCommand: "{PRFX}{NL}&aNo puedes usar este comando porque tu cuenta es &6PREMIUM&a!"
+wrongPassword: "{PRFX} &c¡Contraseña incorrecta!"
+
+# Kick Messages
+nicknameInvalidKick: "{PRFX}{NL}&cTu nombre de usuario contiene caracteres prohibidos. ¡Por favor cambia tu nombre de usuario!"
+reconnectKick: "{PRFX}{NL}&c¡Reconéctate al servidor para verificar tu cuenta!"
+ipLimitKick: "{PRFX}{NL}{NL}&cTu IP ha alcanzado el número máximo de cuentas registradas. Si esto es un error, reinicia tu router o espera unas 6 horas."
+wrongNicknameCaseKick: "{PRFX}{NL}&cDebes iniciar sesión con el nombre de usuario &6{0}&c, no &6{1}&c."
+registrationsDisabledKick: "{PRFX}{NL}&cLos registros están actualmente deshabilitados."
+
+# Boss Bar & Timeout
+bossbar: "&7Tienes &b{0} &7segundos para iniciar sesión."
+timesUp: "{PRFX} &cSe acabó tu tiempo, por favor reconéctate."
+
+# Premium Login
+loginPremium: "{PRFX} ¡Iniciaste sesión automáticamente con cuenta premium!"
+loginPremiumTitle: "{PRFX} ¡Bienvenido!"
+loginPremiumSubtitle: "&a¡Iniciaste sesión como jugador premium!"
+
+# Floodgate Login
+loginFloodgate: "{PRFX} ¡Iniciaste sesión automáticamente con cuenta Bedrock!"
+loginFloodgateTitle: "{PRFX} ¡Bienvenido!"
+loginFloodgateSubtitle: "&a¡Iniciaste sesión como jugador Bedrock!"
+
+# Login
+login: "{PRFX} &b/login <contraseña>&7 para iniciar sesión."
+loginWrongPassword: "{PRFX} &cContraseña incorrecta, te quedan &6{0} &cintentos."
+loginWrongPasswordKick: "{PRFX}{NL}&c¡Ingresaste la contraseña incorrecta demasiadas veces!"
+loginSuccessful: "{PRFX} &a¡Iniciaste sesión exitosamente!"
+loginTitle: "&b&l[CRAFTER]"
+loginSubtitle: "&7Por favor inicia sesión, &b{0} &7intentos restantes."
+loginSuccessfulTitle: "&a&l✔"
+loginSuccessfulSubtitle: "&a¡Iniciaste sesión exitosamente!"
+
+# Register
+register: "{PRFX} &b/register <contraseña> <repetir contraseña> &7para registrarse"
+registerDifferentPasswords: "{PRFX} &c¡Las contraseñas que ingresaste son diferentes!"
+registerPasswordTooShort: "{PRFX} &cLa contraseña que ingresaste es demasiado corta, ¡usa una contraseña diferente!"
+registerPasswordTooLong: "{PRFX} &cLa contraseña que ingresaste es demasiado larga, ¡usa una contraseña diferente!"
+registerPasswordUnsafe: "{PRFX} &cTu contraseña no es lo suficientemente segura. Debe contener letras mayúsculas y minúsculas y números. ¡No uses tu nombre de usuario en tu contraseña!"
+registerSuccessful: "{PRFX} &a¡Registrado exitosamente!"
+registerTitle: "&b&l[CRAFTER]"
+registerSubtitle: "&7Por favor regístrate usando &b/register"
+registerSuccessfulTitle: "&a&l✔"
+registerSuccessfulSubtitle: "&a¡Registrado exitosamente!"
+registerEnterEmail: "{PRFX} &aPor favor ingresa tu dirección de correo electrónico:"
+registerInvalidEmail: "{PRFX} &c¡Formato de dirección de correo electrónico inválido!"
+
+# TOTP (2FA)
+totp: "{PRFX} &b/2fa <código>&7 para verificar."
+totpTitle: "&b&l[CRAFTER]"
+totpSubtitle: "&7Por favor ingresa tu código 2FA."
+totpSuccessful: "{PRFX} &a¡Verificado exitosamente con 2FA!"
+totpSuccessfulTitle: "&a&l✔"
+totpSuccessfulSubtitle: "&a¡Verificación 2FA exitosa!"
+totpDisabled: "{PRFX} &a¡2FA ahora está deshabilitado!"
+totpEnabled: "{PRFX} &a¡2FA ahora está habilitado!"
+totpEnabledAlready: "{PRFX} &c¡2FA ya está habilitado!"
+totpDisabledAlready: "{PRFX} &c¡2FA ya está deshabilitado!"
+totpLink: "{PRFX} &aHaz clic en el enlace para configurar 2FA: &6{0}"
+totpToken: "{PRFX} &aO ingresa manualmente esta clave: &6{0}"
+totpQr: "{PRFX} &aO escanea este código QR: &6{0}"
+totpRecovery: "{PRFX} &aCódigos de recuperación: &6{0}"
+totpWrong: "{PRFX} &c¡Código 2FA incorrecto!"
+totpWrongKick: "{PRFX}{NL}&c¡Ingresaste el código 2FA incorrecto demasiadas veces!"
+
+# Password Commands
+destroySessionSuccessful: "{PRFX} &a¡Tu sesión ha sido destruida!"
+changePasswordSuccessful: "{PRFX} &a¡Contraseña cambiada exitosamente!"
+changePasswordMessage: "{PRFX} &6¡Tu contraseña ha sido cambiada exitosamente!"
+changePasswordUsage: "{PRFX} &cUso: /changepassword <contraseña antigua> <contraseña nueva>"
+modSessionExpired: "{PRFX} &cTu sesión ha expirado. Por favor inicia sesión de nuevo."
+
+# Events
+eventCancelled: "{PRFX} &cEvento de autorización cancelado"
+
+# Unregister
+unregisterSuccessful: "{PRFX} &a¡Cuenta eliminada exitosamente!"
+unregisterUsage: "{PRFX} &cUso: /unregister <contraseña actual> confirm"
+
+# Premium Command
+premiumSuccessful: "{PRFX} &a¡Ahora iniciando sesión como usuario premium!"
+notPremium: "{PRFX} &c¡No eres un usuario premium!"
+alreadyPremium: "{PRFX} &c¡Ya eres un usuario premium!"
+premiumDisabled: "{PRFX} &c¡Esta función está deshabilitada por el administrador!"
+
+# Force Commands
+forceUnregisterSuccessful: "{PRFX} &a¡La cuenta de {0} ha sido eliminada!"
+forceUnregisterNotSuccessful: "{PRFX} &c¡El usuario no está registrado!"
+forceUnregisterUsage: "{PRFX} &cUso: /forceunregister <nombre de usuario>"
+forceRegisterSuccessful: "{PRFX} &a¡La cuenta de {0} ha sido creada!"
+forceRegisterNotSuccessful: "{PRFX} &c¡El usuario ya está registrado!"
+forceRegisterUsage: "{PRFX} &cUso: /forceregister <nombre de usuario> <contraseña>"
+forceChangepasswordSuccessful: "{PRFX} &a¡La contraseña de {0} ha sido cambiada!"
+forceChangepasswordNotSuccessful: "{PRFX} &c¡El usuario no está registrado!"
+forceChangepasswordUsage: "{PRFX} &cUso: /forcechangepassword <nombre de usuario> <nueva contraseña>"
+
+# Discord 2FA
+discordCheckDm: "{PRFX} &e&l¡Revisa tu DM de Discord!"
+discordVerifyPrompt: "{PRFX} &7Por favor responde a la verificación de Discord"
+discordTimeout: "{PRFX} &760 segundos para verificar o serás expulsado"
+discordApproved: "{PRFX} &a¡Verificación de Discord aprobada! Bienvenido al servidor."
+discordDenied: "{PRFX} &cLa verificación de Discord fue denegada. Conexión cerrada."
+discordTimeoutKick: "{PRFX}{NL}&cLa verificación de Discord expiró."
+discordBossbar: "&eTiempo restante para verificación de Discord: &b{0} &esegundos"
+
+# Staff Commands
+staffAdded: "{PRFX} &a{0} ha sido agregado a la lista de staff con ID de Discord: {1}"
+staffRemoved: "{PRFX} &a¡{0} ha sido eliminado de la lista de staff!"
+staffAlreadyExists: "{PRFX} &c¡{0} ya está en la lista de staff!"
+staffNotFound: "{PRFX} &c¡{0} no se encuentra en la lista de staff!"
+staffListHeader: "{PRFX} &e&lLista de Staff:"
+staffListEntry: "&7- &b{0} &7(Discord: &a{1}&7)"
+staffListEmpty: "{PRFX} &c¡No se encontraron miembros del staff!"
+staffReloaded: "{PRFX} &a¡Base de datos de staff recargada!"
+staffUsage: "{PRFX} &cUso: /crafterauth staff <add|remove|list|reload>"
+staffAddUsage: "{PRFX} &cUso: /crafterauth staff add <nombre de usuario> <discord_id>"
+staffRemoveUsage: "{PRFX} &cUso: /crafterauth staff remove <nombre de usuario>"
+
+# Discord Embed Messages
+discordEmbedTitle: "Inicio de Sesión de Staff de CrafterAuth"
+discordEmbedDescription: "**{username}** está intentando iniciar sesión en el servidor."
+discordEmbedUsernameField: "Nombre de Usuario"
+discordEmbedIpField: "Dirección IP"
+discordEmbedTimeField: "Hora"
+discordButtonApprove: "Aprobar"
+discordButtonDeny: "Denegar"
+discordTimeoutMessage: "Tiempo de espera de inicio de sesión"
+discordApprovedMessage: "¡Inicio de sesión verificado!"
+discordDeniedMessage: "Inicio de sesión denegado"
+discordIpMismatchMessage: "La dirección IP no coincide"
+discord2faMessage: "Código 2FA de CrafterAuth: {code}"

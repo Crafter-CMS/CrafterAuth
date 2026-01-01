@@ -49,15 +49,16 @@ public class ForceChangePasswordCommand extends RatelimitedCommand {
   private final Component usage;
 
   public ForceChangePasswordCommand(LimboAuth plugin, ProxyServer server, Dao<RegisteredPlayer, String> playerDao) {
+    super(plugin);
     this.plugin = plugin;
     this.server = server;
     this.playerDao = playerDao;
 
-    this.message = Settings.IMP.MAIN.STRINGS.FORCE_CHANGE_PASSWORD_MESSAGE;
-    this.successful = Settings.IMP.MAIN.STRINGS.FORCE_CHANGE_PASSWORD_SUCCESSFUL;
-    this.notSuccessful = Settings.IMP.MAIN.STRINGS.FORCE_CHANGE_PASSWORD_NOT_SUCCESSFUL;
-    this.notRegistered = Settings.IMP.MAIN.STRINGS.FORCE_CHANGE_PASSWORD_NOT_REGISTERED;
-    this.usage = LimboAuth.getSerializer().deserialize(Settings.IMP.MAIN.STRINGS.FORCE_CHANGE_PASSWORD_USAGE);
+    this.message = plugin.getLanguageManager().getMessages().changePasswordMessage;
+    this.successful = plugin.getLanguageManager().getMessages().forceChangepasswordSuccessful;
+    this.notSuccessful = plugin.getLanguageManager().getMessages().forceChangepasswordNotSuccessful;
+    this.notRegistered = plugin.getLanguageManager().getMessages().forceChangepasswordNotRegistered;
+    this.usage = LimboAuth.getSerializer().deserialize(plugin.getLanguageManager().getMessages().forceChangepasswordUsage);
   }
 
   @Override

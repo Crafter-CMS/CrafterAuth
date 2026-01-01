@@ -24,11 +24,19 @@ public class CrafterWebsite {
   private final String id;
   private final String name;
   private final String url;
+  private String licenseExpiresAt;
 
   public CrafterWebsite(String id, String name, String url) {
     this.id = id;
     this.name = name;
     this.url = url;
+  }
+
+  public CrafterWebsite(String id, String name, String url, String licenseExpiresAt) {
+    this.id = id;
+    this.name = name;
+    this.url = url;
+    this.licenseExpiresAt = licenseExpiresAt;
   }
 
   /**
@@ -58,12 +66,31 @@ public class CrafterWebsite {
     return this.url;
   }
 
+  /**
+   * Get the license expiration date.
+   *
+   * @return The license expiration date (ISO 8601 format)
+   */
+  public String getLicenseExpiresAt() {
+    return this.licenseExpiresAt;
+  }
+
+  /**
+   * Set the license expiration date.
+   *
+   * @param licenseExpiresAt The license expiration date
+   */
+  public void setLicenseExpiresAt(String licenseExpiresAt) {
+    this.licenseExpiresAt = licenseExpiresAt;
+  }
+
   @Override
   public String toString() {
     return "CrafterWebsite{"
         + "id='" + this.id + '\''
         + ", name='" + this.name + '\''
         + ", url='" + this.url + '\''
+        + ", licenseExpiresAt='" + this.licenseExpiresAt + '\''
         + ", hashCode=" + System.identityHashCode(this)
         + '}';
   }

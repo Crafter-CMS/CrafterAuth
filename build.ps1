@@ -1,4 +1,7 @@
-﻿Write-Host ""
+﻿    # Set JAVA_HOME
+$env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot'
+
+Write-Host ""
 Write-Host "CrafterAuth Build & Deploy Script" -ForegroundColor Cyan
 Write-Host "==================================" -ForegroundColor Cyan
 Write-Host ""

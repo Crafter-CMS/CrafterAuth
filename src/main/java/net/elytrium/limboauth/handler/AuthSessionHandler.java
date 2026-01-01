@@ -30,14 +30,15 @@ import io.netty.buffer.ByteBuf;
 import io.whitfin.siphash.SipHasher;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
-import java.text.MessageFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.Map;
 import net.elytrium.commons.kyori.serialization.Serializer;
 import net.elytrium.limboapi.api.Limbo;
 import net.elytrium.limboapi.api.LimboSessionHandler;
@@ -61,6 +62,7 @@ import net.elytrium.limboauth.dependencies.DatabaseLibrary;
 public class AuthSessionHandler implements LimboSessionHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AuthSessionHandler.class);
+  private static final Map<UUID, AuthSessionHandler> instances = new ConcurrentHashMap<>();
 
   public static final CodeVerifier TOTP_CODE_VERIFIER = new DefaultCodeVerifier(new DefaultCodeGenerator(), new SystemTimeProvider());
   private static final BCrypt.Verifyer HASH_VERIFIER = BCrypt.verifyer();
@@ -103,6 +105,7 @@ public class AuthSessionHandler implements LimboSessionHandler {
   private final Dao<RegisteredPlayer, String> playerDao;
   private final Player proxyPlayer;
   private final LimboAuth plugin;
+  private LimboPlayer limboPlayer;
 
   private final long joinTime = System.currentTimeMillis();
   private final BossBar bossBar = BossBar.bossBar(
@@ -132,11 +135,13 @@ public class AuthSessionHandler implements LimboSessionHandler {
     this.proxyPlayer = proxyPlayer;
     this.plugin = plugin;
     this.playerInfo = playerInfo;
+    instances.put(proxyPlayer.getUniqueId(), this);
   }
 
   @Override
   public void onSpawn(Limbo server, LimboPlayer player) {
     this.player = player;
+    this.limboPlayer = player;
 
     if (Settings.IMP.MAIN.DISABLE_FALLING) {
       this.player.disableFalling();
@@ -177,7 +182,7 @@ public class AuthSessionHandler implements LimboSessionHandler {
     } else {
       if (!this.proxyPlayer.getUsername().equals(this.playerInfo.getNickname())) {
         this.proxyPlayer.disconnect(serializer.deserialize(
-            MessageFormat.format(wrongNicknameCaseKick, this.playerInfo.getNickname(), this.proxyPlayer.getUsername()))
+            wrongNicknameCaseKick.replace("{0}", this.playerInfo.getNickname()).replace("{1}", this.proxyPlayer.getUsername()))
         );
         return;
       }
@@ -194,7 +199,7 @@ public class AuthSessionHandler implements LimboSessionHandler {
       } else {
         if (bossBarEnabled) {
           float secondsLeft = (authTime - (System.currentTimeMillis() - this.joinTime)) / 1000.0F;
-          this.bossBar.name(serializer.deserialize(MessageFormat.format(Settings.IMP.MAIN.STRINGS.BOSSBAR, (int) secondsLeft)));
+          this.bossBar.name(serializer.deserialize(replacePlaceholders(this.plugin.getLanguageManager().getMessages().bossbar.replace("{0}", String.valueOf((int) secondsLeft)))));
           // It's possible, that the progress value can overcome 1, e.g. 1.0000001.
           this.bossBar.progress(Math.min(1.0F, secondsLeft * multiplier));
         }
@@ -425,6 +430,12 @@ public class AuthSessionHandler implements LimboSessionHandler {
 
     this.proxyPlayer.hideBossBar(this.bossBar);
     this.plugin.removeAuthenticatingPlayer(this.player.getProxyPlayer().getUsername());
+    instances.remove(this.proxyPlayer.getUniqueId());
+    
+    // Staff pending request temizle
+    if (this.plugin.getStaffAuthHandler() != null) {
+      this.plugin.getStaffAuthHandler().cleanupPlayer(this.proxyPlayer.getUniqueId());
+    }
   }
 
   private void handleEmailInput(String email) {
@@ -587,78 +598,83 @@ public class AuthSessionHandler implements LimboSessionHandler {
     this.player.disconnect();
   }
 
-  public static void reload() {
+  private static String replacePlaceholders(String message) {
+    return message.replace("{PRFX}", Settings.IMP.PREFIX)
+                  .replace("{NL}", "\n");
+  }
+
+  public static void reload(LimboAuth plugin) {
     Serializer serializer = LimboAuth.getSerializer();
-    AuthSessionHandler.ratelimited = serializer.deserialize(Settings.IMP.MAIN.STRINGS.RATELIMITED);
+    AuthSessionHandler.ratelimited = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().ratelimited));
     bossbarColor = Settings.IMP.MAIN.BOSSBAR_COLOR;
     bossbarOverlay = Settings.IMP.MAIN.BOSSBAR_OVERLAY;
-    ipLimitKick = serializer.deserialize(Settings.IMP.MAIN.STRINGS.IP_LIMIT_KICK);
-    databaseErrorKick = serializer.deserialize(Settings.IMP.MAIN.STRINGS.DATABASE_ERROR_KICK);
-    wrongNicknameCaseKick = Settings.IMP.MAIN.STRINGS.WRONG_NICKNAME_CASE_KICK;
-    timesUp = serializer.deserialize(Settings.IMP.MAIN.STRINGS.TIMES_UP);
-    registerSuccessful = serializer.deserialize(Settings.IMP.MAIN.STRINGS.REGISTER_SUCCESSFUL);
-    if (Settings.IMP.MAIN.STRINGS.REGISTER_SUCCESSFUL_TITLE.isEmpty() && Settings.IMP.MAIN.STRINGS.REGISTER_SUCCESSFUL_SUBTITLE.isEmpty()) {
+    ipLimitKick = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().ipLimitKick));
+    databaseErrorKick = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().databaseErrorKick));
+    wrongNicknameCaseKick = replacePlaceholders(plugin.getLanguageManager().getMessages().wrongNicknameCaseKick);
+    timesUp = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().timesUp));
+    registerSuccessful = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().registerSuccessful));
+    if (plugin.getLanguageManager().getMessages().registerSuccessfulTitle.isEmpty() && plugin.getLanguageManager().getMessages().registerSuccessfulSubtitle.isEmpty()) {
       registerSuccessfulTitle = null;
     } else {
       registerSuccessfulTitle = Title.title(
-          serializer.deserialize(Settings.IMP.MAIN.STRINGS.REGISTER_SUCCESSFUL_TITLE),
-          serializer.deserialize(Settings.IMP.MAIN.STRINGS.REGISTER_SUCCESSFUL_SUBTITLE),
+          serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().registerSuccessfulTitle)),
+          serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().registerSuccessfulSubtitle)),
           Settings.IMP.MAIN.CRACKED_TITLE_SETTINGS.toTimes()
       );
     }
     int loginAttempts = Settings.IMP.MAIN.LOGIN_ATTEMPTS;
     loginWrongPassword = new Component[loginAttempts];
     for (int i = 0; i < loginAttempts; ++i) {
-      loginWrongPassword[i] = serializer.deserialize(MessageFormat.format(Settings.IMP.MAIN.STRINGS.LOGIN_WRONG_PASSWORD, i + 1));
+      loginWrongPassword[i] = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().loginWrongPassword.replace("{0}", String.valueOf(i + 1))));
     }
-    loginWrongPasswordKick = serializer.deserialize(Settings.IMP.MAIN.STRINGS.LOGIN_WRONG_PASSWORD_KICK);
-    totp = serializer.deserialize(Settings.IMP.MAIN.STRINGS.TOTP);
-    if (Settings.IMP.MAIN.STRINGS.TOTP_TITLE.isEmpty() && Settings.IMP.MAIN.STRINGS.TOTP_SUBTITLE.isEmpty()) {
+    loginWrongPasswordKick = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().loginWrongPasswordKick));
+    totp = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().totp));
+    if (plugin.getLanguageManager().getMessages().totpTitle.isEmpty() && plugin.getLanguageManager().getMessages().totpSubtitle.isEmpty()) {
       totpTitle = null;
     } else {
       totpTitle = Title.title(
-          serializer.deserialize(Settings.IMP.MAIN.STRINGS.TOTP_TITLE),
-          serializer.deserialize(Settings.IMP.MAIN.STRINGS.TOTP_SUBTITLE),
+          serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().totpTitle)),
+          serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().totpSubtitle)),
           Settings.IMP.MAIN.CRACKED_TITLE_SETTINGS.toTimes()
       );
     }
-    register = serializer.deserialize(Settings.IMP.MAIN.STRINGS.REGISTER);
-    if (Settings.IMP.MAIN.STRINGS.REGISTER_TITLE.isEmpty() && Settings.IMP.MAIN.STRINGS.REGISTER_SUBTITLE.isEmpty()) {
+    register = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().register));
+    if (plugin.getLanguageManager().getMessages().registerTitle.isEmpty() && plugin.getLanguageManager().getMessages().registerSubtitle.isEmpty()) {
       registerTitle = null;
     } else {
       registerTitle = Title.title(
-          serializer.deserialize(Settings.IMP.MAIN.STRINGS.REGISTER_TITLE),
-          serializer.deserialize(Settings.IMP.MAIN.STRINGS.REGISTER_SUBTITLE),
+          serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().registerTitle)),
+          serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().registerSubtitle)),
           Settings.IMP.MAIN.CRACKED_TITLE_SETTINGS.toTimes()
       );
     }
     login = new Component[loginAttempts];
     for (int i = 0; i < loginAttempts; ++i) {
-      login[i] = serializer.deserialize(MessageFormat.format(Settings.IMP.MAIN.STRINGS.LOGIN, i + 1));
+      login[i] = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().login));
     }
-    if (Settings.IMP.MAIN.STRINGS.LOGIN_TITLE.isEmpty() && Settings.IMP.MAIN.STRINGS.LOGIN_SUBTITLE.isEmpty()) {
+    if (plugin.getLanguageManager().getMessages().loginTitle.isEmpty() && plugin.getLanguageManager().getMessages().loginSubtitle.isEmpty()) {
       loginTitle = null;
     } else {
       loginTitle = Title.title(
-          serializer.deserialize(MessageFormat.format(Settings.IMP.MAIN.STRINGS.LOGIN_TITLE, loginAttempts)),
-          serializer.deserialize(MessageFormat.format(Settings.IMP.MAIN.STRINGS.LOGIN_SUBTITLE, loginAttempts)),
+          serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().loginTitle.replace("{0}", String.valueOf(loginAttempts)))),
+          serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().loginSubtitle.replace("{0}", String.valueOf(loginAttempts)))),
           Settings.IMP.MAIN.CRACKED_TITLE_SETTINGS.toTimes()
       );
     }
-    registerDifferentPasswords = serializer.deserialize(Settings.IMP.MAIN.STRINGS.REGISTER_DIFFERENT_PASSWORDS);
-    registerPasswordTooLong = serializer.deserialize(Settings.IMP.MAIN.STRINGS.REGISTER_PASSWORD_TOO_LONG);
-    registerPasswordTooShort = serializer.deserialize(Settings.IMP.MAIN.STRINGS.REGISTER_PASSWORD_TOO_SHORT);
-    registerPasswordUnsafe = serializer.deserialize(Settings.IMP.MAIN.STRINGS.REGISTER_PASSWORD_UNSAFE);
-    loginSuccessful = serializer.deserialize(Settings.IMP.MAIN.STRINGS.LOGIN_SUCCESSFUL);
-    sessionExpired = serializer.deserialize(Settings.IMP.MAIN.STRINGS.MOD_SESSION_EXPIRED);
-    registerEnterEmail = serializer.deserialize(Settings.IMP.MAIN.STRINGS.REGISTER_ENTER_EMAIL);
-    registerInvalidEmail = serializer.deserialize(Settings.IMP.MAIN.STRINGS.REGISTER_INVALID_EMAIL);
-    if (Settings.IMP.MAIN.STRINGS.LOGIN_SUCCESSFUL_TITLE.isEmpty() && Settings.IMP.MAIN.STRINGS.LOGIN_SUCCESSFUL_SUBTITLE.isEmpty()) {
+    registerDifferentPasswords = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().registerDifferentPasswords));
+    registerPasswordTooLong = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().registerPasswordTooLong));
+    registerPasswordTooShort = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().registerPasswordTooShort));
+    registerPasswordUnsafe = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().registerPasswordUnsafe));
+    loginSuccessful = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().loginSuccessful));
+    sessionExpired = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().modSessionExpired));
+    registerEnterEmail = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().registerEnterEmail));
+    registerInvalidEmail = serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().registerInvalidEmail));
+    if (plugin.getLanguageManager().getMessages().loginSuccessfulTitle.isEmpty() && plugin.getLanguageManager().getMessages().loginSuccessfulSubtitle.isEmpty()) {
       loginSuccessfulTitle = null;
     } else {
       loginSuccessfulTitle = Title.title(
-          serializer.deserialize(Settings.IMP.MAIN.STRINGS.LOGIN_SUCCESSFUL_TITLE),
-          serializer.deserialize(Settings.IMP.MAIN.STRINGS.LOGIN_SUCCESSFUL_SUBTITLE),
+          serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().loginSuccessfulTitle)),
+          serializer.deserialize(replacePlaceholders(plugin.getLanguageManager().getMessages().loginSuccessfulSubtitle)),
           Settings.IMP.MAIN.CRACKED_TITLE_SETTINGS.toTimes()
       );
     }
@@ -723,6 +739,17 @@ public class AuthSessionHandler implements LimboSessionHandler {
   @Deprecated()
   public static String genHash(String password) {
     return HASHER.hashToString(Settings.IMP.MAIN.BCRYPT_COST, password.toCharArray());
+  }
+
+  public static void hideLoginBossBar(UUID playerUUID) {
+    AuthSessionHandler handler = instances.get(playerUUID);
+    if (handler != null && handler.limboPlayer != null) {
+      handler.limboPlayer.getProxyPlayer().hideBossBar(handler.bossBar);
+    }
+  }
+
+  public static void removeInstance(UUID playerUUID) {
+    instances.remove(playerUUID);
   }
 
 
