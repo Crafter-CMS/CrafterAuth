@@ -47,17 +47,18 @@ public class ChangePasswordCommand extends RatelimitedCommand {
   private final Component notPlayer;
 
   public ChangePasswordCommand(LimboAuth plugin, Dao<RegisteredPlayer, String> playerDao) {
+    super(plugin);
     this.plugin = plugin;
     this.playerDao = playerDao;
 
     Serializer serializer = LimboAuth.getSerializer();
     this.needOldPass = Settings.IMP.MAIN.CHANGE_PASSWORD_NEED_OLD_PASSWORD;
-    this.notRegistered = serializer.deserialize(Settings.IMP.MAIN.STRINGS.NOT_REGISTERED);
-    this.wrongPassword = serializer.deserialize(Settings.IMP.MAIN.STRINGS.WRONG_PASSWORD);
-    this.successful = serializer.deserialize(Settings.IMP.MAIN.STRINGS.CHANGE_PASSWORD_SUCCESSFUL);
-    this.errorOccurred = serializer.deserialize(Settings.IMP.MAIN.STRINGS.ERROR_OCCURRED);
-    this.usage = serializer.deserialize(Settings.IMP.MAIN.STRINGS.CHANGE_PASSWORD_USAGE);
-    this.notPlayer = serializer.deserialize(Settings.IMP.MAIN.STRINGS.NOT_PLAYER);
+    this.notRegistered = serializer.deserialize(plugin.getLanguageManager().getMessages().notRegistered);
+    this.wrongPassword = serializer.deserialize(plugin.getLanguageManager().getMessages().wrongPassword);
+    this.successful = serializer.deserialize(plugin.getLanguageManager().getMessages().changePasswordSuccessful);
+    this.errorOccurred = serializer.deserialize(plugin.getLanguageManager().getMessages().errorOccurred);
+    this.usage = serializer.deserialize(plugin.getLanguageManager().getMessages().changePasswordUsage);
+    this.notPlayer = serializer.deserialize(plugin.getLanguageManager().getMessages().notPlayer);
   }
 
   @Override

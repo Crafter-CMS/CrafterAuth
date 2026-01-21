@@ -20,68 +20,108 @@ package net.elytrium.limboauth.dependencies.crafter.model;
 import com.google.gson.JsonObject;
 
 /**
- * Model class for Crafter CMS API responses.
+ * Response object from Crafter CMS API.
  */
 public class CrafterResponse {
-  private final boolean success;
-  private final String message;
-  private final JsonObject userData;
+    private final boolean success;
+    private final String message;
+    private final String type;
+    private final JsonObject data;
 
-  public CrafterResponse(boolean success, String message) {
-    this.success = success;
-    this.message = message;
-    this.userData = null;
-  }
+    /**
+     * Creates a new CrafterResponse with success status and message.
+     *
+     * @param success Whether the request was successful
+     * @param message The response message
+     */
+    public CrafterResponse(boolean success, String message) {
+        this(success, message, null, null);
+    }
 
-  public CrafterResponse(boolean success, String message, JsonObject userData) {
-    this.success = success;
-    this.message = message;
-    this.userData = userData;
-  }
+    /**
+     * Creates a new CrafterResponse with success, message and type (for errors).
+     *
+     * @param success Whether the request was successful
+     * @param message The response message
+     * @param type    The specific error type (e.g. AUTHME_USER_ALREADY_EXISTS)
+     */
+    public CrafterResponse(boolean success, String message, String type) {
+        this(success, message, type, null);
+    }
 
-  /**
-   * Check if the request was successful.
-   *
-   * @return true if successful, false otherwise
-   */
-  public boolean isSuccess() {
-    return this.success;
-  }
+    /**
+     * Creates a new CrafterResponse with success, message, type and data.
+     *
+     * @param success Whether the request was successful
+     * @param message The response message
+     * @param type    The error type (may be null)
+     * @param data    Additional response data (may be null)
+     */
+    public CrafterResponse(boolean success, String message, String type, JsonObject data) {
+        this.success = success;
+        this.message = message;
+        this.type = type;
+        this.data = data;
+    }
 
-  /**
-   * Get the response message.
-   *
-   * @return The response message
-   */
-  public String getMessage() {
-    return this.message;
-  }
+    /**
+     * Creates a new CrafterResponse with success status, message, and data.
+     *
+     * @param success Whether the request was successful
+     * @param message The response message
+     * @param data    Additional response data
+     */
+    public CrafterResponse(boolean success, String message, JsonObject data) {
+        this(success, message, null, data);
+    }
 
-  /**
-   * Get the user data from the response.
-   *
-   * @return The user data as JsonObject, or null if not available
-   */
-  public JsonObject getUserData() {
-    return this.userData;
-  }
+    /**
+     * Check if the request was successful.
+     *
+     * @return true if successful, false otherwise
+     */
+    public boolean isSuccess() {
+        return this.success;
+    }
 
-  /**
-   * Check if user data is available.
-   *
-   * @return true if user data is available, false otherwise
-   */
-  public boolean hasUserData() {
-    return this.userData != null;
-  }
+    /**
+     * Get the error type.
+     *
+     * @return The error type or null
+     */
+    public String getType() {
+        return this.type;
+    }
 
-  @Override
-  public String toString() {
-    return "CrafterResponse{"
-        + "success=" + this.success
-        + ", message='" + this.message + '\''
-        + ", userData=" + (this.userData != null ? "available" : "null")
-        + ", hashCode=" + System.identityHashCode(this)
-        + '}';
-  }
+    /**
+     * Get the response message.
+     *
+     * @return The response message
+     */
+    public String getMessage() {
+        return this.message;
+    }
+
+    /**
+     * Get the response data.
+     *
+     * @return The response data as JsonObject, or null if not present
+     */
+    public JsonObject getData() {
+        return this.data;
+    }
+
+    /**
+     * Check if the response contains user data.
+     *
+     * @return true if data is present and not null, false otherwise
+     */
+    public boolean hasUserData() {
+        return this.data != null;
+    }
+
+    @Override
+    public String toString() {
+        return "CrafterResponse{success=" + this.success + ", message='" + this.message + "', data=" + this.data + "}";
+    }
 }

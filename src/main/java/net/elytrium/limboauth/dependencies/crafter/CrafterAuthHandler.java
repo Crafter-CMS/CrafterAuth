@@ -17,7 +17,7 @@
 
 package net.elytrium.limboauth.dependencies.crafter;
 
-import com.velocitypowered.api.proxy.Player;
+// ...existing code...
 import java.util.concurrent.CompletableFuture;
 import net.elytrium.limboauth.model.RegisteredPlayer;
 import org.slf4j.Logger;
@@ -70,8 +70,8 @@ public class CrafterAuthHandler {
   /**
    * Authenticate a user with Crafter CMS.
    *
-   * @param username The username
-   * @param password The password
+   * @param username  The username
+   * @param password  The password
    * @param ipAddress The user's IP address for backend IP limit checks
    * @return CompletableFuture that completes with authentication result
    */
@@ -100,40 +100,42 @@ public class CrafterAuthHandler {
   /**
    * Register a new user with Crafter CMS.
    *
-   * @param username The username
-   * @param email The email
-   * @param password The password
+   * @param username        The username
+   * @param email           The email
+   * @param password        The password
    * @param passwordConfirm The password confirmation
-   * @param ipAddress The user's IP address for backend IP limit checks
-   * @return CompletableFuture that completes with registration result
+   * @param ipAddress       The user's IP address for backend IP limit checks
+   * @return CompletableFuture that completes with registration response
    */
-  public CompletableFuture<Boolean> registerUser(String username, String email, String password, String passwordConfirm, String ipAddress) {
+  public CompletableFuture<net.elytrium.limboauth.dependencies.crafter.model.CrafterResponse> registerUser(
+      String username, String email, String password, String passwordConfirm, String ipAddress) {
     if (!this.apiClient.isInitialized()) {
       this.logger.warn("Crafter CMS API not initialized, cannot register user");
-      return CompletableFuture.completedFuture(false);
+      return CompletableFuture.completedFuture(
+          new net.elytrium.limboauth.dependencies.crafter.model.CrafterResponse(false, "API not initialized"));
     }
 
     return this.apiClient.signUp(username, email, password, passwordConfirm, ipAddress)
         .thenApply(response -> {
           if (response.isSuccess()) {
             this.logger.info("User {} registered successfully via Crafter CMS", username);
-            return true;
           } else {
             this.logger.warn("User {} registration failed via Crafter CMS: {}", username, response.getMessage());
-            return false;
           }
+          return response;
         })
         .exceptionally(throwable -> {
           this.logger.error("Error registering user via Crafter CMS: " + throwable.getMessage(), throwable);
-          return false;
+          return new net.elytrium.limboauth.dependencies.crafter.model.CrafterResponse(false,
+              "Internal error: " + throwable.getMessage());
         });
   }
 
   /**
    * Request password reset for a user with Crafter CMS.
    *
-   * @param username The username
-   * @param email The email
+   * @param username  The username
+   * @param email     The email
    * @param ipAddress The user's IP address for backend IP limit checks
    * @return CompletableFuture that completes with password reset result
    */

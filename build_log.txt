@@ -1,0 +1,113 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Task :compileJava FAILED
+E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:29: error: package net.elytrium.limboauth.dependencies.crafter.model does not exist
+import net.elytrium.limboauth.dependencies.crafter.model.CrafterResponse;
+                                                        ^
+E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:30: error: package net.elytrium.limboauth.dependencies.crafter.model does not exist
+import net.elytrium.limboauth.dependencies.crafter.model.CrafterWebsite;
+                                                        ^
+E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:44: error: cannot find symbol
+  private CrafterWebsite website;
+          ^
+  symbol:   class CrafterWebsite
+  location: class CrafterAPIClient
+E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:174: error: cannot find symbol
+  public CompletableFuture<CrafterResponse> signIn(String username, String password, String ipAddress) {
+                           ^
+  symbol:   class CrafterResponse
+  location: class CrafterAPIClient
+E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:235: error: cannot find symbol
+  public CompletableFuture<CrafterResponse> signUp(String username, String email, String password,
+                           ^
+  symbol:   class CrafterResponse
+  location: class CrafterAPIClient
+E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:297: error: cannot find symbol
+  public CompletableFuture<CrafterResponse> forgotPassword(String username, String email, String ipAddress) {
+                           ^
+  symbol:   class CrafterResponse
+  location: class CrafterAPIClient
+E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:354: error: cannot find symbol
+  private CrafterResponse parseResponse(HttpResponse<String> response) {
+          ^
+  symbol:   class CrafterResponse
+  location: class CrafterAPIClient
+E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:407: error: cannot find symbol
+  public CrafterWebsite getWebsite() {
+         ^
+  symbol:   class CrafterWebsite
+  location: class CrafterAPIClient
+E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:533: error: cannot find symbol
+  public CompletableFuture<CrafterResponse> checkUserExists(String username) {
+                           ^
+  symbol:   class CrafterResponse
+  location: class CrafterAPIClient
+E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:606: error: cannot find symbol
+  public CompletableFuture<CrafterResponse> getUserInfo(String username) {
+                           ^
+  symbol:   class CrafterResponse
+  location: class CrafterAPIClient
+10 errors
+
+[Incubating] Problems report is available at: file:///E:/Backup/Github/CrafterAuth/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava'.
+> Compilation failed; see the compiler output below.
+  E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:29: error: package net.elytrium.limboauth.dependencies.crafter.model does not exist
+  import net.elytrium.limboauth.dependencies.crafter.model.CrafterResponse;
+                                                          ^
+  E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:30: error: package net.elytrium.limboauth.dependencies.crafter.model does not exist
+  import net.elytrium.limboauth.dependencies.crafter.model.CrafterWebsite;
+                                                          ^
+  E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:44: error: cannot find symbol
+    private CrafterWebsite website;
+            ^
+    symbol:   class CrafterWebsite
+    location: class CrafterAPIClient
+  E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:174: error: cannot find symbol
+    public CompletableFuture<CrafterResponse> signIn(String username, String password, String ipAddress) {
+                             ^
+    symbol:   class CrafterResponse
+    location: class CrafterAPIClient
+  E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:235: error: cannot find symbol
+    public CompletableFuture<CrafterResponse> signUp(String username, String email, String password,
+                             ^
+    symbol:   class CrafterResponse
+    location: class CrafterAPIClient
+  E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:297: error: cannot find symbol
+    public CompletableFuture<CrafterResponse> forgotPassword(String username, String email, String ipAddress) {
+                             ^
+    symbol:   class CrafterResponse
+    location: class CrafterAPIClient
+  E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:354: error: cannot find symbol
+    private CrafterResponse parseResponse(HttpResponse<String> response) {
+            ^
+    symbol:   class CrafterResponse
+    location: class CrafterAPIClient
+  E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:407: error: cannot find symbol
+    public CrafterWebsite getWebsite() {
+           ^
+    symbol:   class CrafterWebsite
+    location: class CrafterAPIClient
+  E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:533: error: cannot find symbol
+    public CompletableFuture<CrafterResponse> checkUserExists(String username) {
+                             ^
+    symbol:   class CrafterResponse
+    location: class CrafterAPIClient
+  E:\Backup\Github\CrafterAuth\src\main\java\net\elytrium\limboauth\dependencies\crafter\CrafterAPIClient.java:606: error: cannot find symbol
+    public CompletableFuture<CrafterResponse> getUserInfo(String username) {
+                             ^
+    symbol:   class CrafterResponse
+    location: class CrafterAPIClient
+  10 errors
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights.
+
+BUILD FAILED in 7s
+1 actionable task: 1 executed

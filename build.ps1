@@ -1,9 +1,12 @@
-﻿Write-Host ""
+﻿# Set JAVA_HOME
+$env:JAVA_HOME = 'C:\Program Files\Microsoft\jdk-17.0.17.10-hotspot'
+
+Write-Host ""
 Write-Host "CrafterAuth Build & Deploy Script" -ForegroundColor Cyan
 Write-Host "==================================" -ForegroundColor Cyan
 Write-Host ""
 
-$VelocityPlugins = "C:\Users\Bora\Desktop\Velocity\plugins"
+$VelocityPlugins = "$env:USERPROFILE\Desktop\Velocity\plugins"
 
 Write-Host "[1/3] Eski build dosyalari temizleniyor..." -ForegroundColor Blue
 & ./gradlew clean --no-daemon
@@ -51,7 +54,8 @@ if ($?) {
     Write-Host "Hedef: $VelocityPlugins\CrafterAuth-$Version.jar" -ForegroundColor Green
     Write-Host "Versiyon: $Version" -ForegroundColor Green
     Write-Host ""
-} else {
+}
+else {
     Write-Host "Kopyalama islemi basarisiz!" -ForegroundColor Red
     exit 1
 }

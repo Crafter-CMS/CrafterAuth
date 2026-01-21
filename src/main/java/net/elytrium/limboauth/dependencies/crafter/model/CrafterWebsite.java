@@ -18,53 +18,68 @@
 package net.elytrium.limboauth.dependencies.crafter.model;
 
 /**
- * Model class for Crafter CMS website information.
+ * Represents a website registered with Crafter CMS.
  */
 public class CrafterWebsite {
-  private final String id;
-  private final String name;
-  private final String url;
+    private final String id;
+    private final String name;
+    private final String url;
+    private final String licenseExpiresAt;
 
-  public CrafterWebsite(String id, String name, String url) {
-    this.id = id;
-    this.name = name;
-    this.url = url;
-  }
+    /**
+     * Creates a new CrafterWebsite instance.
+     *
+     * @param id               The website ID
+     * @param name             The website name
+     * @param url              The website URL
+     * @param licenseExpiresAt The license expiration date (can be null)
+     */
+    public CrafterWebsite(String id, String name, String url, String licenseExpiresAt) {
+        this.id = id;
+        this.name = name;
+        this.url = url;
+        this.licenseExpiresAt = licenseExpiresAt;
+    }
 
-  /**
-   * Get the website ID.
-   *
-   * @return The website ID
-   */
-  public String getId() {
-    return this.id;
-  }
+    /**
+     * Get the website ID.
+     *
+     * @return The website ID
+     */
+    public String getId() {
+        return this.id;
+    }
 
-  /**
-   * Get the website name.
-   *
-   * @return The website name
-   */
-  public String getName() {
-    return this.name;
-  }
+    /**
+     * Get the website name.
+     *
+     * @return The website name
+     */
+    public String getName() {
+        return this.name;
+    }
 
-  /**
-   * Get the website URL.
-   *
-   * @return The website URL
-   */
-  public String getUrl() {
-    return this.url;
-  }
+    /**
+     * Get the website URL.
+     *
+     * @return The website URL
+     */
+    public String getUrl() {
+        return this.url;
+    }
 
-  @Override
-  public String toString() {
-    return "CrafterWebsite{"
-        + "id='" + this.id + '\''
-        + ", name='" + this.name + '\''
-        + ", url='" + this.url + '\''
-        + ", hashCode=" + System.identityHashCode(this)
-        + '}';
-  }
+    /**
+     * Get the license expiration date.
+     *
+     * @return The license expiration date, or null if not set
+     */
+    public String getLicenseExpiresAt() {
+        return this.licenseExpiresAt;
+    }
+
+    @Override
+    public String toString() {
+        return "CrafterWebsite{id='" + this.id + "', name='" + this.name + "', url='" + this.url
+                + "', licenseExpiresAt='" + this.licenseExpiresAt + "'}";
+    }
 }

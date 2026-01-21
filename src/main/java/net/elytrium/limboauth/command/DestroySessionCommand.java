@@ -33,11 +33,12 @@ public class DestroySessionCommand extends RatelimitedCommand {
   private final Component notPlayer;
 
   public DestroySessionCommand(LimboAuth plugin) {
+    super(plugin);
     this.plugin = plugin;
 
     Serializer serializer = LimboAuth.getSerializer();
-    this.successful = serializer.deserialize(Settings.IMP.MAIN.STRINGS.DESTROY_SESSION_SUCCESSFUL);
-    this.notPlayer = serializer.deserialize(Settings.IMP.MAIN.STRINGS.NOT_PLAYER);
+    this.successful = serializer.deserialize(plugin.getLanguageManager().getMessages().destroySessionSuccessful);
+    this.notPlayer = serializer.deserialize(plugin.getLanguageManager().getMessages().notPlayer);
   }
 
   @Override

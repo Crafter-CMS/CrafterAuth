@@ -1,0 +1,144 @@
+# Turkish Language File - Türkçe Dil Dosyası
+# CrafterAuth v1.1
+
+# Sistem Mesajları
+reload: "{PRFX} &aBaşarıyla yeniden yüklendi!"
+errorOccurred: "{PRFX} &cBir iç hata meydana geldi!"
+ratelimited: "{PRFX} &cLütfen bir sonraki kullanım için bekleyin!"
+databaseErrorKick: "{PRFX} &cBir veritabanı hatası meydana geldi!"
+
+# Oyuncu Mesajları
+notPlayer: "{PRFX} &cKonsol bu komutu çalıştıramaz!"
+notRegistered: "{PRFX} &cKayıtlı değilsiniz veya hesabınız &6PREMIUM&c!"
+crackedCommand: "{PRFX}{NL}&aBu komutu kullanamazsınız çünkü hesabınız &6PREMIUM&a!"
+wrongPassword: "{PRFX} &cŞifre yanlış!"
+
+# Atılma Mesajları
+nicknameInvalidKick: "{PRFX}{NL}&cKullanıcı adınız yasaklı karakterler içeriyor. Lütfen kullanıcı adınızı değiştirin!"
+reconnectKick: "{PRFX}{NL}&cHesabınızı doğrulamak için sunucuya yeniden bağlanın!"
+ipLimitKick: "{PRFX}{NL}{NL}&cIP'niz maksimum kayıtlı hesap sayısına ulaştı. Bu bir hata ise, yönlendiricinizi yeniden başlatın veya yaklaşık 6 saat bekleyin."
+wrongNicknameCaseKick: "{PRFX}{NL}&cKullanıcı adı &6{0}&c ile giriş yapmalısınız, &6{1}&c ile değil."
+registrationsDisabledKick: "{PRFX}{NL}&cKayıtlar şu anda devre dışı."
+
+# Boss Bar & Zaman Aşımı
+bossbar: "&7Giriş yapmak için &b{0} &7saniyeniz kaldı."
+timesUp: "{PRFX} &cSüreniz doldu, tekrardan bağlanın."
+
+# Premium Giriş
+loginPremium: "{PRFX} Premium hesap ile otomatik olarak giriş yaptınız!"
+loginPremiumTitle: "{PRFX} Hoşgeldiniz!"
+loginPremiumSubtitle: "&aPremium oyuncu olarak giriş yaptınız!"
+
+# Floodgate Giriş
+loginFloodgate: "{PRFX} Bedrock hesabı ile otomatik olarak giriş yaptınız!"
+loginFloodgateTitle: "{PRFX} Hoşgeldiniz!"
+loginFloodgateSubtitle: "&aBedrock oyuncusu olarak giriş yaptınız!"
+
+# Giriş
+login: "{PRFX} &b/giris <şifre>&7 komutunu kullanarak giriş yapın."
+loginWrongPassword: "{PRFX} &cYanlış şifre girdiniz, &6{0} &cşansınız kaldı."
+loginWrongPasswordKick: "{PRFX}{NL}&cYanlış şifreyi birçok kez girdiniz!"
+loginSuccessful: "{PRFX} &aBaşarıyla giriş yaptınız!"
+loginTitle: "&b&l[ᴄʀᴀꜰᴛᴇʀ]"
+loginSubtitle: "&7Giriş yapın, &b{0} &7hakkınız kaldı."
+loginSuccessfulTitle: "&a&l✔"
+loginSuccessfulSubtitle: "&aBaşarıyla giriş yaptınız!"
+
+# Kayıt
+register: "{PRFX} &b/kayit <şifre> <şifre> &7 komutunu kullanarak kayıt olun"
+registerDifferentPasswords: "{PRFX} &cGirilen şifreler birbirinden farklı!"
+registerPasswordTooShort: "{PRFX} &cGirdiğiniz şifre çok kısa, farklı bir şifre kullanın!"
+registerPasswordTooLong: "{PRFX} &cGirdiğiniz şifre çok uzun, farklı bir şifre kullanın!"
+registerPasswordUnsafe: "{PRFX} &cŞifreniz yeterince güvenli değil. Büyük ve küçük harf ve rakam içermelidir. Kullanıcı adınızı şifrenizde kullanmayın!"
+registerSuccessful: "{PRFX} &aBaşarıyla kayıt oldunuz!"
+registerTitle: "&b&l[ᴄʀᴀꜰᴛᴇʀ]"
+registerSubtitle: "&7Kayıt olmak için &b/kayit &7kullanın"
+registerSuccessfulTitle: "&a&l✔"
+registerSuccessfulSubtitle: "&aBaşarıyla kayıt oldunuz!"
+registerEnterEmail: "{PRFX} &aLütfen e-posta adresinizi girin:"
+registerInvalidEmail: "{PRFX} &cGeçersiz e-posta adresi formatı!"
+
+# TOTP (2FA)
+totp: "{PRFX} &b/2fa <kod>&7 ile doğrulayın."
+totpTitle: "&b&l[ᴄʀᴀꜰᴛᴇʀ]"
+totpSubtitle: "&7Lütfen 2FA kodunuzu girin."
+totpSuccessful: "{PRFX} &a2FA ile başarıyla doğrulandı!"
+totpSuccessfulTitle: "&a&l✔"
+totpSuccessfulSubtitle: "&a2FA doğrulama başarılı!"
+totpDisabled: "{PRFX} &a2FA artık kapalı!"
+totpEnabled: "{PRFX} &a2FA artık açık!"
+totpEnabledAlready: "{PRFX} &c2FA zaten açık!"
+totpDisabledAlready: "{PRFX} &c2FA zaten kapalı!"
+totpLink: "{PRFX} &a2FA kurmak için bağlantıya tıklayın: &6{0}"
+totpToken: "{PRFX} &aVeya bu anahtarı manuel girin: &6{0}"
+totpQr: "{PRFX} &aVeya bu QR kodunu tarayın: &6{0}"
+totpRecovery: "{PRFX} &aKurtarma kodları: &6{0}"
+totpWrong: "{PRFX} &cYanlış 2FA kodu!"
+totpWrongKick: "{PRFX}{NL}&cYanlış 2FA kodunu çok fazla girdiniz!"
+
+# Şifre Komutları
+destroySessionSuccessful: "{PRFX} &aOturumunuz silindi!"
+changePasswordSuccessful: "{PRFX} &aŞifre başarıyla değiştirildi!"
+changePasswordMessage: "{PRFX} &6Şifreniz başarıyla değiştirildi!"
+changePasswordUsage: "{PRFX} &cKullanım: /changepassword <eski şifre> <yeni şifre>"
+modSessionExpired: "{PRFX} &cOturumunuzun süresi doldu. Lütfen tekrar giriş yapın."
+
+# Olaylar
+eventCancelled: "{PRFX} &cYetkilendirme olayı iptal edildi"
+
+# Kayıt Silme
+unregisterSuccessful: "{PRFX} &aHesap başarıyla silindi!"
+unregisterUsage: "{PRFX} &cKullanım: /unregister <mevcut şifre> confirm"
+
+# Premium Komutu
+premiumSuccessful: "{PRFX} &aArtık premium kullanıcı olarak giriş yapıyorsunuz!"
+notPremium: "{PRFX} &cPremium kullanıcı değilsiniz!"
+alreadyPremium: "{PRFX} &cZaten premium kullanıcısınız!"
+premiumDisabled: "{PRFX} &cBu özellik yönetici tarafından devre dışı bırakıldı!"
+
+# Zorla Komutları
+forceUnregisterSuccessful: "{PRFX} &a{0} kullanıcısının hesabı silindi!"
+forceUnregisterNotSuccessful: "{PRFX} &cKullanıcı kayıtlı değil!"
+forceUnregisterUsage: "{PRFX} &cKullanım: /forceunregister <kullanıcıadı>"
+forceRegisterSuccessful: "{PRFX} &a{0} kullanıcısının hesabı oluşturuldu!"
+forceRegisterNotSuccessful: "{PRFX} &cKullanıcı zaten kayıtlı!"
+forceRegisterUsage: "{PRFX} &cKullanım: /forceregister <kullanıcıadı> <şifre>"
+forceChangepasswordSuccessful: "{PRFX} &a{0} kullanıcısının şifresi değiştirildi!"
+forceChangepasswordNotSuccessful: "{PRFX} &cKullanıcı kayıtlı değil!"
+forceChangepasswordUsage: "{PRFX} &cKullanım: /forcechangepassword <kullanıcıadı> <yeni şifre>"
+
+# Discord 2FA
+discordCheckDm: "{PRFX} &e&lDiscord DM'inizi kontrol edin!"
+discordVerifyPrompt: "{PRFX} &7Lütfen Discord doğrulamasına yanıt verin"
+discordTimeout: "{PRFX} &7Doğrulama için 60 saniyeniz var"
+discordApproved: "{PRFX} &aDiscord doğrulaması onaylandı! Sunucuya hoş geldiniz."
+discordDenied: "{PRFX} &cDiscord doğrulaması reddedildi. Bağlantı kapatıldı."
+discordTimeoutKick: "{PRFX}{NL}&cDiscord doğrulaması zaman aşımına uğradı."
+discordBossbar: "&eDiscord doğrulama için kalan süre: &b{0} &esaniye"
+
+# Yetkili Komutları
+staffAdded: "{PRFX} &a{0} yetkili listesine Discord ID ile eklendi: {1}"
+staffRemoved: "{PRFX} &a{0} yetkili listesinden çıkarıldı!"
+staffAlreadyExists: "{PRFX} &c{0} zaten yetkili listesinde!"
+staffNotFound: "{PRFX} &c{0} yetkili listesinde bulunamadı!"
+staffListHeader: "{PRFX} &e&lYetkili Listesi:"
+staffListEntry: "&7- &b{0} &7(Discord: &a{1}&7)"
+staffListEmpty: "{PRFX} &cYetkili üye bulunamadı!"
+staffReloaded: "{PRFX} &aYetkili veritabanı yeniden yüklendi!"
+staffUsage: "{PRFX} &cKullanım: /crafterauth staff <add|remove|list|reload>"
+staffAddUsage: "{PRFX} &cKullanım: /crafterauth staff add <kullanıcıadı> <discord_id>"
+staffRemoveUsage: "{PRFX} &cKullanım: /crafterauth staff remove <kullanıcıadı>"
+
+# Discord Embed Mesajları
+discordEmbedTitle: "CrafterAuth Yetkili Girişi"
+discordEmbedDescription: "**{username}** isimli kullanıcı sunucuya giriş yapmak istiyor."
+discordEmbedUsernameField: "Kullanıcı Adı"
+discordEmbedIpField: "IP Adresi"
+discordEmbedTimeField: "Zaman"
+discordButtonApprove: "Onayla"
+discordButtonDeny: "Reddet"
+discordTimeoutMessage: "Giriş süresi doldu"
+discordApprovedMessage: "Giriş doğrulandı!"
+discordDeniedMessage: "Giriş reddedildi"
+discordIpMismatchMessage: "IP adresi uyuşmuyor"
+discord2faMessage: "CrafterAuth 2FA kodunuz: {code}"

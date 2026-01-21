@@ -26,6 +26,7 @@ import com.velocitypowered.api.event.connection.PreLoginEvent;
 import com.velocitypowered.api.event.connection.PreLoginEvent.PreLoginComponentResult;
 import com.velocitypowered.api.event.player.GameProfileRequestEvent;
 import com.velocitypowered.api.proxy.InboundConnection;
+import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.util.UuidUtils;
 import com.velocitypowered.proxy.connection.MinecraftConnection;
 import com.velocitypowered.proxy.connection.client.InitialInboundConnection;
@@ -46,15 +47,18 @@ import net.elytrium.limboauth.floodgate.FloodgateApiHolder;
 import net.elytrium.limboauth.handler.AuthSessionHandler;
 import net.elytrium.limboauth.model.RegisteredPlayer;
 import net.elytrium.limboauth.model.SQLRuntimeException;
+import net.elytrium.limboauth.event.PostAuthorizationEvent;
 import net.kyori.adventure.text.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+// import net.elytrium.limboauth.staff.StaffDatabase;
 
 // TODO: Customizable events priority
+
 public class AuthListener {
 
   private static final MethodHandle DELEGATE_FIELD;
-  //private static final MethodHandle LOGIN_FIELD;
+  // private static final MethodHandle LOGIN_FIELD;
 
   private final LimboAuth plugin;
   private final Dao<RegisteredPlayer, String> playerDao;
@@ -66,7 +70,7 @@ public class AuthListener {
     this.playerDao = playerDao;
     this.floodgateApi = floodgateApi;
 
-    this.errorOccurred = LimboAuth.getSerializer().deserialize(Settings.IMP.MAIN.STRINGS.ERROR_OCCURRED);
+    this.errorOccurred = LimboAuth.getSerializer().deserialize(plugin.getLanguageManager().getMessages().errorOccurred);
   }
 
   @Subscribe(order = PostOrder.LATE)
@@ -87,7 +91,8 @@ public class AuthListener {
               CachedPremiumUser premiumUser = this.plugin.getPremiumCache(username);
               MinecraftConnection connection = this.getConnection(event.getConnection());
               if (!connection.isClosed() && premiumUser != null && !premiumUser.isForcePremium()
-                  && this.plugin.isPremiumInternal(username.toLowerCase(Locale.ROOT)).getState() == PremiumState.UNKNOWN) {
+                  && this.plugin.isPremiumInternal(username.toLowerCase(Locale.ROOT))
+                      .getState() == PremiumState.UNKNOWN) {
                 this.plugin.getPendingLogins().add(username);
 
                 // As Velocity doesnt have any events for our usecase, just inject into netty
@@ -132,34 +137,39 @@ public class AuthListener {
     return initialInbound.getConnection();
   }
 
-  // Temporarily disabled because some clients send UUID version 4 (random UUID) even if the player is cracked
+  // Temporarily disabled because some clients send UUID version 4 (random UUID)
+  // even if the player is cracked
   /*
-  private boolean isPremiumByIdentifiedKey(InboundConnection inbound) throws Throwable {
-    LoginInboundConnection inboundConnection = (LoginInboundConnection) inbound;
-    InitialInboundConnection initialInbound = (InitialInboundConnection) DELEGATE_FIELD.invokeExact(inboundConnection);
-    MinecraftConnection connection = initialInbound.getConnection();
-    InitialLoginSessionHandler handler = (InitialLoginSessionHandler) connection.getSessionHandler();
-
-    ServerLogin packet = (ServerLogin) LOGIN_FIELD.invokeExact(handler);
-    if (packet == null) {
-      return false;
-    }
-
-    UUID holder = packet.getHolderUuid();
-    if (holder == null) {
-      return false;
-    }
-
-    return holder.version() != 3;
-  }
-  */
+   * private boolean isPremiumByIdentifiedKey(InboundConnection inbound) throws
+   * Throwable {
+   * LoginInboundConnection inboundConnection = (LoginInboundConnection) inbound;
+   * InitialInboundConnection initialInbound = (InitialInboundConnection)
+   * DELEGATE_FIELD.invokeExact(inboundConnection);
+   * MinecraftConnection connection = initialInbound.getConnection();
+   * InitialLoginSessionHandler handler = (InitialLoginSessionHandler)
+   * connection.getSessionHandler();
+   * 
+   * ServerLogin packet = (ServerLogin) LOGIN_FIELD.invokeExact(handler);
+   * if (packet == null) {
+   * return false;
+   * }
+   * 
+   * UUID holder = packet.getHolderUuid();
+   * if (holder == null) {
+   * return false;
+   * }
+   * 
+   * return holder.version() != 3;
+   * }
+   */
 
   @Subscribe
   public void onPostLogin(PostLoginEvent event) {
     UUID uuid = event.getPlayer().getUniqueId();
     Runnable postLoginTask = this.plugin.getPostLoginTasks().remove(uuid);
     if (postLoginTask != null) {
-      // We need to delay for player's client to finish switching the server, it takes a little time.
+      // We need to delay for player's client to finish switching the server, it takes
+      // a little time.
       this.plugin.getServer().getScheduler()
           .buildTask(this.plugin, postLoginTask)
           .delay(Settings.IMP.MAIN.PREMIUM_AND_FLOODGATE_MESSAGES_DELAY, TimeUnit.MILLISECONDS)
@@ -169,19 +179,94 @@ public class AuthListener {
 
   @Subscribe
   public void onLoginLimboRegister(LoginLimboRegisterEvent event) {
-    // Player has completed online-mode authentication, can be sure that the player has premium account
-    if (event.getPlayer().isOnlineMode()) {
-      CachedPremiumUser premiumUser = this.plugin.getPremiumCache(event.getPlayer().getUsername());
+    Player player = event.getPlayer();
+    String username = player.getUsername();
+
+    // Normal oyuncu için mevcut akış
+    if (player.isOnlineMode()) {
+      CachedPremiumUser premiumUser = this.plugin.getPremiumCache(username);
       if (premiumUser != null) {
         premiumUser.setForcePremium(true);
       }
 
-      this.plugin.getPendingLogins().remove(event.getPlayer().getUsername());
+      this.plugin.getPendingLogins().remove(username);
     }
 
-    if (this.plugin.needAuth(event.getPlayer())) {
-      event.addOnJoinCallback(() -> this.plugin.authPlayer(event.getPlayer()));
+    if (this.plugin.needAuth(player)) {
+      event.addOnJoinCallback(() -> this.plugin.authPlayer(player));
     }
+  }
+
+  @Subscribe
+  public void onPostAuthorization(PostAuthorizationEvent event) {
+    // Auth başarılı olduktan sonra - sunucuya gitmeden ÖNCE
+    net.elytrium.limboapi.api.player.LimboPlayer limboPlayer = event.getPlayer();
+    Player player = limboPlayer.getProxyPlayer();
+    UUID uuid = player.getUniqueId();
+    // normal auth processes
+    // event.setResult(net.elytrium.limboauth.event.TaskEvent.Result.WAIT);
+
+    // String ip = player.getRemoteAddress().getAddress().getHostAddress();
+
+    // // Discord 2FA Boss Bar göster
+    // net.kyori.adventure.bossbar.BossBar twoFABossBar =
+    // net.kyori.adventure.bossbar.BossBar.bossBar(
+    // net.kyori.adventure.text.Component.text("§eDiscord doğrulama için kalan süre:
+    // §660 saniye"),
+    // 1.0f,
+    // net.kyori.adventure.bossbar.BossBar.Color.YELLOW,
+    // net.kyori.adventure.bossbar.BossBar.Overlay.PROGRESS
+    // );
+    // limboPlayer.getProxyPlayer().showBossBar(twoFABossBar);
+
+    // // Countdown scheduler
+    // final int[] remainingSeconds = {60};
+    // com.velocitypowered.api.scheduler.ScheduledTask[] countdownTask = new
+    // com.velocitypowered.api.scheduler.ScheduledTask[1];
+
+    // countdownTask[0] = this.plugin.getServer().getScheduler()
+    // .buildTask(this.plugin, () -> {
+    // remainingSeconds[0]--;
+    // if (remainingSeconds[0] > 0) {
+    // twoFABossBar.name(net.kyori.adventure.text.Component.text("§eDiscord
+    // doğrulama için kalan süre: §6" + remainingSeconds[0] + " saniye"));
+    // twoFABossBar.progress((float) remainingSeconds[0] / 60.0f);
+    // } else {
+    // limboPlayer.getProxyPlayer().hideBossBar(twoFABossBar);
+    // if (countdownTask[0] != null) {
+    // countdownTask[0].cancel();
+    // }
+    // }
+    // })
+    // .repeat(1, java.util.concurrent.TimeUnit.SECONDS)
+    // .schedule();
+
+    // // Discord DM gönder ve onay bekle
+    // this.plugin.getStaffAuthHandler().verifyBeforeServerTransfer(
+    // player,
+    // ip,
+    // (approved) -> {
+    // // Boss bar'ı kapat
+    // limboPlayer.getProxyPlayer().hideBossBar(twoFABossBar);
+    // if (countdownTask[0] != null) {
+    // countdownTask[0].cancel();
+    // }
+    //
+    // if (approved) {
+    // // Onaylandı, sunucuya gönder
+    // event.complete(net.elytrium.limboauth.event.TaskEvent.Result.NORMAL);
+    // } else {
+    // // Reddedildi, disconnect
+    // event.completeAndCancel(net.kyori.adventure.text.Component.text("§cDiscord
+    // doğrulaması reddedildi veya zaman aşımına uğradı."));
+    // }
+    // }
+    // );
+    // return;
+    // }
+    // }
+
+    // Normal oyuncu - direkt geç (default Result.NORMAL zaten set)
   }
 
   @Subscribe(order = PostOrder.FIRST)
@@ -193,8 +278,10 @@ public class AuthListener {
       return;
     }
 
-    if (Settings.IMP.MAIN.SAVE_UUID && (this.floodgateApi == null || !this.floodgateApi.isFloodgatePlayer(event.getOriginalProfile().getId()))) {
-      RegisteredPlayer registeredPlayer = AuthSessionHandler.fetchInfo(this.playerDao, event.getOriginalProfile().getId());
+    if (Settings.IMP.MAIN.SAVE_UUID
+        && (this.floodgateApi == null || !this.floodgateApi.isFloodgatePlayer(event.getOriginalProfile().getId()))) {
+      RegisteredPlayer registeredPlayer = AuthSessionHandler.fetchInfo(this.playerDao,
+          event.getOriginalProfile().getId());
 
       if (registeredPlayer != null && !registeredPlayer.getUuid().isEmpty()) {
         event.setGameProfile(event.getOriginalProfile().withId(UUID.fromString(registeredPlayer.getUuid())));
@@ -219,7 +306,8 @@ public class AuthListener {
     } else if (event.isOnlineMode()) {
       try {
         UpdateBuilder<RegisteredPlayer, String> updateBuilder = this.playerDao.updateBuilder();
-        updateBuilder.where().eq(RegisteredPlayer.LOWERCASE_NICKNAME_FIELD, event.getUsername().toLowerCase(Locale.ROOT));
+        updateBuilder.where().eq(RegisteredPlayer.LOWERCASE_NICKNAME_FIELD,
+            event.getUsername().toLowerCase(Locale.ROOT));
         updateBuilder.updateColumnValue(RegisteredPlayer.HASH_FIELD, "");
         updateBuilder.update();
       } catch (SQLException e) {
@@ -232,11 +320,13 @@ public class AuthListener {
     }
 
     if (!event.isOnlineMode() && !Settings.IMP.MAIN.OFFLINE_MODE_PREFIX.isEmpty()) {
-      event.setGameProfile(event.getOriginalProfile().withName(Settings.IMP.MAIN.OFFLINE_MODE_PREFIX + event.getUsername()));
+      event.setGameProfile(
+          event.getOriginalProfile().withName(Settings.IMP.MAIN.OFFLINE_MODE_PREFIX + event.getUsername()));
     }
 
     if (event.isOnlineMode() && !Settings.IMP.MAIN.ONLINE_MODE_PREFIX.isEmpty()) {
-      event.setGameProfile(event.getOriginalProfile().withName(Settings.IMP.MAIN.ONLINE_MODE_PREFIX + event.getUsername()));
+      event.setGameProfile(
+          event.getOriginalProfile().withName(Settings.IMP.MAIN.ONLINE_MODE_PREFIX + event.getUsername()));
     }
   }
 
@@ -244,8 +334,10 @@ public class AuthListener {
     try {
       DELEGATE_FIELD = MethodHandles.privateLookupIn(LoginInboundConnection.class, MethodHandles.lookup())
           .findGetter(LoginInboundConnection.class, "delegate", InitialInboundConnection.class);
-      //LOGIN_FIELD = MethodHandles.privateLookupIn(InitialLoginSessionHandler.class, MethodHandles.lookup())
-      //    .findGetter(InitialLoginSessionHandler.class, "login",ServerLoginPacket.class);
+      // LOGIN_FIELD = MethodHandles.privateLookupIn(InitialLoginSessionHandler.class,
+      // MethodHandles.lookup())
+      // .findGetter(InitialLoginSessionHandler.class,
+      // "login",ServerLoginPacket.class);
     } catch (NoSuchFieldException | IllegalAccessException e) {
       throw new ReflectionException(e);
     }

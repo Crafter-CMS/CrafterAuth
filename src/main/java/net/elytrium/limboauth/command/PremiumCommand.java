@@ -47,19 +47,20 @@ public class PremiumCommand extends RatelimitedCommand {
   private final Component notPlayer;
 
   public PremiumCommand(LimboAuth plugin, Dao<RegisteredPlayer, String> playerDao) {
+    super(plugin);
     this.plugin = plugin;
     this.playerDao = playerDao;
 
     Serializer serializer = LimboAuth.getSerializer();
     this.confirmKeyword = Settings.IMP.MAIN.CONFIRM_KEYWORD;
-    this.notRegistered = serializer.deserialize(Settings.IMP.MAIN.STRINGS.NOT_REGISTERED);
-    this.alreadyPremium = serializer.deserialize(Settings.IMP.MAIN.STRINGS.ALREADY_PREMIUM);
-    this.successful = serializer.deserialize(Settings.IMP.MAIN.STRINGS.PREMIUM_SUCCESSFUL);
-    this.errorOccurred = serializer.deserialize(Settings.IMP.MAIN.STRINGS.ERROR_OCCURRED);
-    this.notPremium = serializer.deserialize(Settings.IMP.MAIN.STRINGS.NOT_PREMIUM);
-    this.wrongPassword = serializer.deserialize(Settings.IMP.MAIN.STRINGS.WRONG_PASSWORD);
-    this.usage = serializer.deserialize(Settings.IMP.MAIN.STRINGS.PREMIUM_USAGE);
-    this.notPlayer = serializer.deserialize(Settings.IMP.MAIN.STRINGS.NOT_PLAYER);
+    this.notRegistered = serializer.deserialize(plugin.getLanguageManager().getMessages().notRegistered);
+    this.alreadyPremium = serializer.deserialize(plugin.getLanguageManager().getMessages().alreadyPremium);
+    this.successful = serializer.deserialize(plugin.getLanguageManager().getMessages().premiumSuccessful);
+    this.errorOccurred = serializer.deserialize(plugin.getLanguageManager().getMessages().errorOccurred);
+    this.notPremium = serializer.deserialize(plugin.getLanguageManager().getMessages().notPremium);
+    this.wrongPassword = serializer.deserialize(plugin.getLanguageManager().getMessages().wrongPassword);
+    this.usage = serializer.deserialize(plugin.getLanguageManager().getMessages().premiumUsage);
+    this.notPlayer = serializer.deserialize(plugin.getLanguageManager().getMessages().notPlayer);
   }
 
   @Override

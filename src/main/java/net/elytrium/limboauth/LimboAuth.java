@@ -1,3 +1,4 @@
+// ...existing code...
 /*
  * Copyright (C) 2021 - 2025 Elytrium
  *
@@ -25,7 +26,7 @@ import com.google.gson.JsonParser;
 import com.google.inject.Inject;
 import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.dao.DaoManager;
-import com.j256.ormlite.dao.GenericRawResults;
+// ...existing code...
 import com.j256.ormlite.db.DatabaseType;
 import com.j256.ormlite.field.FieldType;
 import com.j256.ormlite.stmt.QueryBuilder;
@@ -74,7 +75,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -85,7 +85,7 @@ import java.util.stream.Stream;
 import net.elytrium.commons.kyori.serialization.Serializer;
 import net.elytrium.commons.kyori.serialization.Serializers;
 import net.elytrium.commons.utils.reflection.ReflectionException;
-import net.elytrium.commons.utils.updates.UpdatesChecker;
+// ...existing code...
 import net.elytrium.limboapi.api.Limbo;
 import net.elytrium.limboapi.api.LimboFactory;
 import net.elytrium.limboapi.api.chunk.VirtualWorld;
@@ -99,9 +99,8 @@ import net.elytrium.limboauth.command.ForceRegisterCommand;
 import net.elytrium.limboauth.command.ForceUnregisterCommand;
 import net.elytrium.limboauth.command.LimboAuthCommand;
 import net.elytrium.limboauth.command.PremiumCommand;
-import net.elytrium.limboauth.dependencies.crafter.CrafterAPIClient;
+// ...existing code...
 import net.elytrium.limboauth.dependencies.crafter.CrafterAuthHandler;
-import net.elytrium.limboauth.dependencies.crafter.model.CrafterResponse;
 import net.elytrium.limboauth.command.TotpCommand;
 import net.elytrium.limboauth.command.UnregisterCommand;
 import net.elytrium.limboauth.dependencies.DatabaseLibrary;
@@ -113,10 +112,13 @@ import net.elytrium.limboauth.event.PreRegisterEvent;
 import net.elytrium.limboauth.event.TaskEvent;
 import net.elytrium.limboauth.floodgate.FloodgateApiHolder;
 import net.elytrium.limboauth.handler.AuthSessionHandler;
+import net.elytrium.limboauth.lang.LanguageManager;
 import net.elytrium.limboauth.listener.AuthListener;
+// import net.elytrium.limboauth.staff.StaffDatabase;
 import net.elytrium.limboauth.listener.BackendEndpointsListener;
 import net.elytrium.limboauth.model.RegisteredPlayer;
 import net.elytrium.limboauth.model.SQLRuntimeException;
+import net.elytrium.limboauth.util.IPAddressUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.ComponentSerializer;
 import net.kyori.adventure.title.Title;
@@ -127,25 +129,23 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 
-@Plugin(
-    id = "crafterauth",
-    name = "CrafterAuth",
-    version = BuildConstants.AUTH_VERSION,
-    url = "https://crafter.net.tr/",
-    authors = {
-        "Crafter (https://crafter.net.tr/)",
-    },
-    dependencies = {
-        @Dependency(id = "limboapi"),
-        @Dependency(id = "floodgate", optional = true)
-    }
-)
+@Plugin(id = "crafterauth", name = "CrafterAuth", version = "1.1", url = "https://crafter.net.tr/", authors = {
+    "Crafter (https://crafter.net.tr/)",
+}, dependencies = {
+    @Dependency(id = "limboapi"),
+    @Dependency(id = "floodgate", optional = true)
+})
 public class LimboAuth {
+
+  public void shutdown() {
+  }
 
   public static final Ratelimiter<InetAddress> RATELIMITER = Ratelimiters.createWithMilliseconds(5000);
 
-  // Architectury API appends /541f59e4256a337ea252bc482a009d46 to the channel name, that is a UUID.nameUUIDFromBytes from the TokenMessage class name
-  private static final ChannelIdentifier MOD_CHANNEL = MinecraftChannelIdentifier.create("limboauth", "mod/541f59e4256a337ea252bc482a009d46");
+  // Architectury API appends /541f59e4256a337ea252bc482a009d46 to the channel
+  // name, that is a UUID.nameUUIDFromBytes from the TokenMessage class name
+  private static final ChannelIdentifier MOD_CHANNEL = MinecraftChannelIdentifier.create("limboauth",
+      "mod/541f59e4256a337ea252bc482a009d46");
   private static final ChannelIdentifier LEGACY_MOD_CHANNEL = new LegacyChannelIdentifier("LIMBOAUTH|MOD");
 
   @MonotonicNonNull
@@ -172,6 +172,8 @@ public class LimboAuth {
   private final FloodgateApiHolder floodgateApi;
   private final Map<String, AuthSessionHandler> authenticatingPlayers;
 
+  private LanguageManager languageManager;
+
   @Nullable
   private Component loginPremium;
   @Nullable
@@ -196,29 +198,93 @@ public class LimboAuth {
   private Pattern nicknameValidationPattern;
   private Limbo authServer;
 
-  @Inject
-  public LimboAuth(Logger logger, ProxyServer server, Metrics.Factory metricsFactory, @DataDirectory Path dataDirectory) {
-    setLogger(logger);
+  private static String replacePlaceholders(String message) {
+    return message.replace("{PRFX}", Settings.IMP.PREFIX)
+        .replace("{NL}", "\n");
+  }
 
+  @Inject
+  public LimboAuth(Logger logger, ProxyServer server, Metrics.Factory metricsFactory,
+      @DataDirectory Path dataDirectory) {
+
+    setLogger(logger);
     this.server = server;
     this.metricsFactory = metricsFactory;
     this.dataDirectory = dataDirectory;
 
+    // dataDirectory atandıktan sonra config dosyasını kontrol et
+
+    // dataDirectoryFile ve configFile atamaları
     this.dataDirectoryFile = dataDirectory.toFile();
     this.configFile = new File(this.dataDirectoryFile, "config.yml");
-
     this.authenticatingPlayers = new ConcurrentHashMap<>();
-    this.factory = (LimboFactory) this.server.getPluginManager().getPlugin("limboapi").flatMap(PluginContainer::getInstance).orElseThrow();
 
+    // LimboFactory ve FloodgateApiHolder atamaları
+    this.factory = (LimboFactory) this.server.getPluginManager().getPlugin("limboapi")
+        .flatMap(PluginContainer::getInstance).orElseThrow();
     if (this.server.getPluginManager().getPlugin("floodgate").isPresent()) {
       this.floodgateApi = new FloodgateApiHolder();
     } else {
       this.floodgateApi = null;
     }
+
+    this.languageManager = new LanguageManager(dataDirectory.toFile(), logger, "tr");
   }
 
   @Subscribe
   public void onProxyInitialization(ProxyInitializeEvent event) {
+    System.setProperty("com.j256.simplelogging.level", "ERROR");
+    // try (FileReader reader = new FileReader(discordConfigFile)) {
+    // Map<String, Object> config = yaml.load(reader);
+
+    // // Environment variable desteği
+    // String token = (String) config.get("token");
+    // if (token == null || token.isEmpty()) {
+    // token = System.getenv("CRAFTERAUTH_DISCORD_TOKEN");
+    // if (token != null && !token.isEmpty()) {
+    // LOGGER.info("Discord token environment variable'dan okundu.");
+    // }
+    // }
+
+    // if (token != null && !token.isEmpty()) {
+    // this.discordBot = new DiscordBot(token);
+    // this.discordBot.setLogger(msg -> LOGGER.info(msg));
+    // this.discordBot.start();
+    // LOGGER.info("Discord botu başlatıldı.");
+
+    // // Staff database başlat
+    // this.staffDatabase = new StaffDatabase(discordConfigFile);
+    // LOGGER.info("Staff veritabanı yüklendi: " +
+    // this.staffDatabase.getStaffList().size() + " kayıt");
+
+    // // Staff authentication handler başlat
+    // long timeoutSeconds = 60; // Default 60 saniye
+    // if (config.containsKey("staff_login_timeout")) {
+    // timeoutSeconds = ((Number) config.get("staff_login_timeout")).longValue();
+    // }
+    // this.staffAuthHandler = new
+    // net.elytrium.limboauth.staff.StaffAuthenticationHandler(
+    // this.discordBot, this.staffDatabase, timeoutSeconds);
+    // this.staffAuthHandler.setLogger(msg -> LOGGER.info(msg));
+    // this.staffAuthHandler.setMessageConfig(new
+    // net.elytrium.limboauth.staff.MessageConfig(this));
+    // LOGGER.info("Staff authentication handler başlatıldı (timeout: " +
+    // timeoutSeconds + "s)");
+
+    // } else {
+    // LOGGER.warn("Discord bot token'ı plugins/crafterauth/discord.yml dosyasında
+    // bulunamadı veya boş.");
+    // }
+    // }
+    // } else {
+    // ensureDiscordConfigExists();
+    // LOGGER
+    // .warn("Discord bot ayar dosyası (plugins/crafterauth/discord.yml) bulunamadı.
+    // Discord botu başlatılmadı.");
+    // }
+    // } catch (Exception e) {
+    // LOGGER.error("Discord bot başlatılırken hata oluştu: " + e.getMessage(), e);
+    // }
     System.setProperty("com.j256.simplelogging.level", "ERROR");
 
     try {
@@ -228,9 +294,12 @@ public class LimboAuth {
       this.server.shutdown();
     }
 
-    Metrics metrics = this.metricsFactory.make(this, 13700);
-    metrics.addCustomChart(new SimplePie("floodgate_auth", () -> String.valueOf(Settings.IMP.MAIN.FLOODGATE_NEED_AUTH)));
-    metrics.addCustomChart(new SimplePie("premium_auth", () -> String.valueOf(Settings.IMP.MAIN.ONLINE_MODE_NEED_AUTH)));
+    Metrics metrics = this.metricsFactory.make(this,
+        13700);
+    metrics
+        .addCustomChart(new SimplePie("floodgate_auth", () -> String.valueOf(Settings.IMP.MAIN.FLOODGATE_NEED_AUTH)));
+    metrics
+        .addCustomChart(new SimplePie("premium_auth", () -> String.valueOf(Settings.IMP.MAIN.ONLINE_MODE_NEED_AUTH)));
     metrics.addCustomChart(new SimplePie("db_type", () -> String.valueOf(Settings.IMP.DATABASE.STORAGE_TYPE)));
     metrics.addCustomChart(new SimplePie("load_world", () -> String.valueOf(Settings.IMP.MAIN.LOAD_WORLD)));
     metrics.addCustomChart(new SimplePie("totp_enabled", () -> String.valueOf(Settings.IMP.MAIN.ENABLE_TOTP)));
@@ -249,7 +318,7 @@ public class LimboAuth {
             .header("Accept", "application/vnd.github.v3+json")
             .GET()
             .build();
-        
+
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         LOGGER.debug("GitHub API status: " + response.statusCode());
         if (response.statusCode() == 200) {
@@ -262,20 +331,20 @@ public class LimboAuth {
             latestVersion = lvPartsRaw[0] + "." + lvPartsRaw[1];
           }
           LOGGER.info("GitHub son surum: " + latestVersion + " (tag: " + tag + ")");
-          
+
           // Versiyon karşılaştırması (major.minor formatı)
           try {
             String[] currentParts = currentVersion.split("\\.");
             String[] latestParts = latestVersion.split("\\.");
-            
+
             int currentMajor = Integer.parseInt(currentParts[0]);
             int currentMinor = currentParts.length > 1 ? Integer.parseInt(currentParts[1]) : 0;
             int latestMajor = Integer.parseInt(latestParts[0]);
             int latestMinor = latestParts.length > 1 ? Integer.parseInt(latestParts[1]) : 0;
-            
-            boolean isOutdated = (latestMajor > currentMajor) || 
-                                 (latestMajor == currentMajor && latestMinor > currentMinor);
-            
+
+            boolean isOutdated = (latestMajor > currentMajor) ||
+                (latestMajor == currentMajor && latestMinor > currentMinor);
+
             if (isOutdated) {
               LOGGER.warn("");
               LOGGER.warn(" ╔════════════════════════════════════════════════════════╗");
@@ -312,6 +381,16 @@ public class LimboAuth {
   public void reload() {
     Settings.IMP.reload(this.configFile, Settings.IMP.PREFIX);
 
+    // Initialize or reload language manager
+    if (this.languageManager == null) {
+      this.languageManager = new LanguageManager(
+          this.dataDirectoryFile,
+          LOGGER,
+          Settings.IMP.MAIN.LANG);
+    } else {
+      this.languageManager.loadLanguage();
+    }
+
     if (!Settings.IMP.MAIN.ONLINE_MODE_NEED_AUTH_STRICT && !Settings.IMP.MAIN.SAVE_PREMIUM_ACCOUNTS) {
       Settings.IMP.MAIN.SAVE_PREMIUM_ACCOUNTS = true;
       LOGGER.error("As you have online-mode-need-auth-strict disabled, save-premium-accounts "
@@ -319,8 +398,9 @@ public class LimboAuth {
     }
 
     if (this.floodgateApi == null && !Settings.IMP.MAIN.FLOODGATE_NEED_AUTH) {
-      throw new IllegalStateException("If you want floodgate players to automatically pass auth (floodgate-need-auth: false),"
-          + " please install floodgate plugin.");
+      throw new IllegalStateException(
+          "If you want floodgate players to automatically pass auth (floodgate-need-auth: false),"
+              + " please install floodgate plugin.");
     }
 
     ComponentSerializer<Component, Component, String> serializer = Settings.IMP.SERIALIZER.getSerializer();
@@ -331,42 +411,49 @@ public class LimboAuth {
       setSerializer(new Serializer(serializer));
     }
 
-    TaskEvent.reload();
-    AuthSessionHandler.reload();
+    TaskEvent.reload(this);
+    AuthSessionHandler.reload(this);
 
-    this.loginPremium = Settings.IMP.MAIN.STRINGS.LOGIN_PREMIUM.isEmpty() ? null : SERIALIZER.deserialize(Settings.IMP.MAIN.STRINGS.LOGIN_PREMIUM);
-    if (Settings.IMP.MAIN.STRINGS.LOGIN_PREMIUM_TITLE.isEmpty() && Settings.IMP.MAIN.STRINGS.LOGIN_PREMIUM_SUBTITLE.isEmpty()) {
+    this.loginPremium = this.languageManager.getMessages().loginPremium.isEmpty() ? null
+        : SERIALIZER.deserialize(replacePlaceholders(this.languageManager.getMessages().loginPremium));
+    if (this.languageManager.getMessages().loginPremiumTitle.isEmpty()
+        && this.languageManager.getMessages().loginPremiumSubtitle.isEmpty()) {
       this.loginPremiumTitle = null;
     } else {
       this.loginPremiumTitle = Title.title(
-          SERIALIZER.deserialize(Settings.IMP.MAIN.STRINGS.LOGIN_PREMIUM_TITLE),
-          SERIALIZER.deserialize(Settings.IMP.MAIN.STRINGS.LOGIN_PREMIUM_SUBTITLE),
-          Settings.IMP.MAIN.PREMIUM_TITLE_SETTINGS.toTimes()
-      );
+          SERIALIZER.deserialize(replacePlaceholders(this.languageManager.getMessages().loginPremiumTitle)),
+          SERIALIZER.deserialize(replacePlaceholders(this.languageManager.getMessages().loginPremiumSubtitle)),
+          Settings.IMP.MAIN.PREMIUM_TITLE_SETTINGS.toTimes());
     }
 
-    this.loginFloodgate = Settings.IMP.MAIN.STRINGS.LOGIN_FLOODGATE.isEmpty() ? null : SERIALIZER.deserialize(Settings.IMP.MAIN.STRINGS.LOGIN_FLOODGATE);
-    if (Settings.IMP.MAIN.STRINGS.LOGIN_FLOODGATE_TITLE.isEmpty() && Settings.IMP.MAIN.STRINGS.LOGIN_FLOODGATE_SUBTITLE.isEmpty()) {
+    this.loginFloodgate = this.languageManager.getMessages().loginFloodgate.isEmpty() ? null
+        : SERIALIZER.deserialize(replacePlaceholders(this.languageManager.getMessages().loginFloodgate));
+    if (this.languageManager.getMessages().loginFloodgateTitle.isEmpty()
+        && this.languageManager.getMessages().loginFloodgateSubtitle.isEmpty()) {
       this.loginFloodgateTitle = null;
     } else {
       this.loginFloodgateTitle = Title.title(
-          SERIALIZER.deserialize(Settings.IMP.MAIN.STRINGS.LOGIN_FLOODGATE_TITLE),
-          SERIALIZER.deserialize(Settings.IMP.MAIN.STRINGS.LOGIN_FLOODGATE_SUBTITLE),
-          Settings.IMP.MAIN.PREMIUM_TITLE_SETTINGS.toTimes()
-      );
+          SERIALIZER.deserialize(replacePlaceholders(this.languageManager.getMessages().loginFloodgateTitle)),
+          SERIALIZER.deserialize(replacePlaceholders(this.languageManager.getMessages().loginFloodgateSubtitle)),
+          Settings.IMP.MAIN.PREMIUM_TITLE_SETTINGS.toTimes());
     }
 
-    this.bruteforceAttemptKick = SERIALIZER.deserialize(Settings.IMP.MAIN.STRINGS.LOGIN_WRONG_PASSWORD_KICK);
-    this.nicknameInvalidKick = SERIALIZER.deserialize(Settings.IMP.MAIN.STRINGS.NICKNAME_INVALID_KICK);
-    this.reconnectKick = SERIALIZER.deserialize(Settings.IMP.MAIN.STRINGS.RECONNECT_KICK);
-    this.registrationsDisabledKick = SERIALIZER.deserialize(Settings.IMP.MAIN.STRINGS.REGISTRATIONS_DISABLED_KICK);
+    this.bruteforceAttemptKick = SERIALIZER
+        .deserialize(replacePlaceholders(this.languageManager.getMessages().loginWrongPasswordKick));
+    this.nicknameInvalidKick = SERIALIZER
+        .deserialize(replacePlaceholders(this.languageManager.getMessages().nicknameInvalidKick));
+    this.reconnectKick = SERIALIZER.deserialize(replacePlaceholders(this.languageManager.getMessages().reconnectKick));
+    this.registrationsDisabledKick = SERIALIZER
+        .deserialize(replacePlaceholders(this.languageManager.getMessages().registrationsDisabledKick));
 
     if (Settings.IMP.MAIN.CHECK_PASSWORD_STRENGTH) {
       try {
         this.unsafePasswords.clear();
-        Path unsafePasswordsPath = Paths.get(this.dataDirectoryFile.getAbsolutePath(), Settings.IMP.MAIN.UNSAFE_PASSWORDS_FILE);
+        Path unsafePasswordsPath = Paths.get(this.dataDirectoryFile.getAbsolutePath(),
+            Settings.IMP.MAIN.UNSAFE_PASSWORDS_FILE);
         if (!unsafePasswordsPath.toFile().exists()) {
-          Files.copy(Objects.requireNonNull(this.getClass().getResourceAsStream("/unsafe_passwords.txt")), unsafePasswordsPath);
+          Files.copy(Objects.requireNonNull(this.getClass().getResourceAsStream("/unsafe_passwords.txt")),
+              unsafePasswordsPath);
         }
 
         try (Stream<String> unsafePasswordsStream = Files.lines(unsafePasswordsPath)) {
@@ -399,14 +486,13 @@ public class LimboAuth {
 
     Settings.DATABASE dbConfig = Settings.IMP.DATABASE;
     this.databaseLibrary = dbConfig.STORAGE_TYPE;
-    
+
     if (this.databaseLibrary == DatabaseLibrary.CRAFTER) {
       // Initialize Crafter CMS API client
       LOGGER.info("Initializing Crafter CMS API client...");
       this.crafterAPIClient = new CrafterAPIClient(Settings.IMP, LOGGER);
       this.crafterAPIClient.initialize().thenAccept(success -> {
         if (success) {
-          LOGGER.info("Crafter CMS API başarıyla başlatıldı");
           LOGGER.info("");
           LOGGER.info("  ██████╗██████╗  █████╗ ███████╗████████╗███████╗██████╗ ");
           LOGGER.info(" ██╔════╝██╔══██╗██╔══██╗██╔════╝╚══██╔══╝██╔════╝██╔══██╗");
@@ -415,17 +501,68 @@ public class LimboAuth {
           LOGGER.info(" ╚██████╗██║  ██║██║  ██║██║        ██║   ███████╗██║  ██║");
           LOGGER.info("  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝        ╚═╝   ╚══════╝╚═╝  ╚═╝");
           LOGGER.info("");
-          LOGGER.info(" Hosgeldiniz: " + this.crafterAPIClient.getWebsite().getName());
-          String websiteId = this.crafterAPIClient.getWebsite().getId();
-          String maskedId = websiteId.length() > 7 ? websiteId.substring(0, 7) + "*****" : websiteId;
-          LOGGER.info(" Website ID: " + maskedId);
-          LOGGER.info("");
-          LOGGER.info(" Lisans Durumu: ✓ ");
-          LOGGER.info("");
-          
+
           // Initialize CrafterAuthHandler after successful API initialization
           this.crafterAuthHandler = new CrafterAuthHandler(this.crafterAPIClient, LOGGER);
-          LOGGER.info("CrafterAuthHandler başarıyla başlatıldı");
+
+          String websiteId = this.crafterAPIClient.getWebsite().getId();
+          String maskedId = websiteId.length() > 7 ? websiteId.substring(0, 7) + "****" : websiteId;
+
+          LOGGER.info(" ┌─────────────────────────────────────────────────────┐");
+          LOGGER.info(" │  🏢  Website: " + String.format("%-38s", this.crafterAPIClient.getWebsite().getName()) + "│");
+          LOGGER.info(" │  🆔  Site ID: " + String.format("%-38s", maskedId) + "│");
+          LOGGER.info(" │  ✅  Lisans : Aktif                                 │");
+          LOGGER.info(" └─────────────────────────────────────────────────────┘");
+          LOGGER.info("");
+
+          // Check license expiration if available
+          String expiresAt = this.crafterAPIClient.getWebsite().getLicenseExpiresAt();
+
+          if (expiresAt != null && !expiresAt.isEmpty()) {
+            try {
+              // Parse ISO 8601 date format (e.g., "2025-12-31T23:59:59.000Z")
+              java.time.Instant expirationInstant = java.time.Instant.parse(expiresAt);
+              java.time.Instant now = java.time.Instant.now();
+              long daysRemaining = java.time.Duration.between(now, expirationInstant).toDays();
+
+              if (daysRemaining > 0) {
+                LOGGER.info(" 📅  Lisans Süresi: " + daysRemaining + " gün");
+              } else if (daysRemaining == 0) {
+                LOGGER.warn(" ⚠️  Lisans Süresi: Bugün sona eriyor!");
+              } else {
+                LOGGER.error(" ❌  Lisans Süresi: " + Math.abs(daysRemaining) + " gün önce sona erdi!");
+              }
+              LOGGER.info("");
+            } catch (Exception e) {
+              LOGGER.debug("Lisans süresini hesaplarken hata: " + e.getMessage());
+            }
+          }
+
+          // Perform detailed health check
+          LOGGER.info(" ⏳  API Servisleri Kontrol Ediliyor...");
+          LOGGER.info("");
+          this.crafterAPIClient.checkApiHealth().thenAccept(report -> {
+            LOGGER.info(" ┌─────────────────────────────────────────────────────┐");
+            LOGGER.info(" │              📊  API SAĞLIK RAPORU                  │");
+            LOGGER.info(" ├─────────────────────────────────────────────────────┤");
+            LOGGER.info(
+                " │  " + (report.licenseValid ? "✅" : "❌") + "  Lisans Doğrulama                               │");
+            LOGGER.info(
+                " │  " + (report.signInService ? "✅" : "❌") + "  Giriş Servisi                                  │");
+            LOGGER.info(
+                " │  " + (report.signUpService ? "✅" : "❌") + "  Kayıt Servisi                                  │");
+            LOGGER.info(
+                " │  " + (report.userCheckService ? "✅" : "❌") + "  Kullanıcı Servisi                              │");
+            LOGGER.info(" └─────────────────────────────────────────────────────┘");
+            LOGGER.info("");
+
+            if (report.getHealthyCount() == 4) {
+              LOGGER.info(" 🎉  Tüm Servisler Aktif (" + report.getHealthyCount() + "/4)");
+            } else {
+              LOGGER.warn(" ⚠️  Bazı Servisler Aktif Değil (" + report.getHealthyCount() + "/4)");
+            }
+            LOGGER.info("");
+          });
         } else {
           LOGGER.error("");
           LOGGER.error(" ╔═══════════════════════════════════════════════════════╗");
@@ -439,8 +576,8 @@ public class LimboAuth {
           LOGGER.error("");
           LOGGER.error(" → Lütfen yapılandırmanızı kontrol edin:");
           LOGGER.error("   • API URL: " + Settings.IMP.DATABASE.API_URL);
-          LOGGER.error("   • Lisans Anahtarı: " + (Settings.IMP.DATABASE.LICENSE_KEY.length() > 8 
-              ? Settings.IMP.DATABASE.LICENSE_KEY.substring(0, 8) + "..." 
+          LOGGER.error("   • Lisans Anahtarı: " + (Settings.IMP.DATABASE.LICENSE_KEY.length() > 8
+              ? Settings.IMP.DATABASE.LICENSE_KEY.substring(0, 8) + "..."
               : "AYARLANMAMIŞ"));
           LOGGER.error("");
           LOGGER.error(" → İletişim: https://crafter.net.tr/discord");
@@ -462,7 +599,7 @@ public class LimboAuth {
         LOGGER.error("");
         return null;
       });
-      
+
       // For Crafter CMS, we don't need traditional database connection
       this.connectionSource = null;
     } else {
@@ -472,8 +609,7 @@ public class LimboAuth {
             dbConfig.HOSTNAME,
             dbConfig.DATABASE + dbConfig.CONNECTION_PARAMETERS,
             dbConfig.USER,
-            dbConfig.PASSWORD
-        );
+            dbConfig.PASSWORD);
       } catch (ReflectiveOperationException e) {
         throw new ReflectionException(e);
       } catch (SQLException e) {
@@ -516,6 +652,7 @@ public class LimboAuth {
     manager.unregister("destroysession");
     manager.unregister("2fa");
     manager.unregister("limboauth");
+    manager.unregister("crafterauth");
 
     manager.register("unregister", new UnregisterCommand(this, this.playerDao), "unreg");
     manager.register("forceregister", new ForceRegisterCommand(this, this.playerDao), "forcereg");
@@ -523,19 +660,19 @@ public class LimboAuth {
     manager.register("premium", new PremiumCommand(this, this.playerDao), "license");
     manager.register("forceunregister", new ForceUnregisterCommand(this, this.server, this.playerDao), "forceunreg");
     manager.register("changepassword", new ChangePasswordCommand(this, this.playerDao), "changepass", "cp");
-    manager.register("forcechangepassword", new ForceChangePasswordCommand(this, this.server, this.playerDao), "forcechangepass", "fcp");
+    manager.register("forcechangepassword", new ForceChangePasswordCommand(this, this.server, this.playerDao),
+        "forcechangepass", "fcp");
     manager.register("destroysession", new DestroySessionCommand(this), "logout");
     if (Settings.IMP.MAIN.ENABLE_TOTP) {
-      manager.register("2fa", new TotpCommand(this.playerDao), "totp");
+      manager.register("2fa", new TotpCommand(this, this.playerDao), "totp");
     }
-    manager.register("limboauth", new LimboAuthCommand(this), "la", "auth", "lauth");
+    manager.register("crafterauth", new LimboAuthCommand(this), "ca", "cauth", "crafter");
 
     Settings.MAIN.AUTH_COORDS authCoords = Settings.IMP.MAIN.AUTH_COORDS;
     VirtualWorld authWorld = this.factory.createVirtualWorld(
         Settings.IMP.MAIN.DIMENSION,
         authCoords.X, authCoords.Y, authCoords.Z,
-        (float) authCoords.YAW, (float) authCoords.PITCH
-    );
+        (float) authCoords.YAW, (float) authCoords.PITCH);
 
     if (Settings.IMP.MAIN.LOAD_WORLD) {
       try {
@@ -608,7 +745,8 @@ public class LimboAuth {
   }
 
   private List<String> filterCommands(List<String> commands) {
-    return commands.stream().filter(command -> command.startsWith("/")).map(command -> command.substring(1)).collect(Collectors.toList());
+    return commands.stream().filter(command -> command.startsWith("/")).map(command -> command.substring(1))
+        .collect(Collectors.toList());
   }
 
   private void checkCache(Map<?, ? extends CachedUser> userMap, long time) {
@@ -624,73 +762,42 @@ public class LimboAuth {
     Set<FieldType> tables = new HashSet<>();
     Collections.addAll(tables, tableInfo.getFieldTypes());
 
-    String findSql;
-    String database = Settings.IMP.DATABASE.DATABASE;
     String tableName = tableInfo.getTableName();
     DatabaseLibrary databaseLibrary = Settings.IMP.DATABASE.STORAGE_TYPE;
-    switch (databaseLibrary) {
-      case SQLITE: {
-        findSql = "SELECT name FROM PRAGMA_TABLE_INFO('" + tableName + "')";
-        break;
-      }
-      case H2: {
-        findSql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '" + tableName + "';";
-        break;
-      }
-      case POSTGRESQL: {
-        findSql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_CATALOG = '" + database + "' AND TABLE_NAME = '" + tableName + "';";
-        break;
-      }
-      case MARIADB:
-      case MYSQL: {
-        findSql = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '" + database + "' AND TABLE_NAME = '" + tableName + "';";
-        break;
-      }
-      default: {
-        LOGGER.error("WRONG DATABASE TYPE.");
-        this.server.shutdown();
-        return;
-      }
-    }
 
-    try (GenericRawResults<String[]> queryResult = dao.queryRaw(findSql)) {
-      queryResult.forEach(result -> tables.removeIf(table -> table.getColumnName().equalsIgnoreCase(result[0])));
-
-      tables.forEach(table -> {
-        try {
-          StringBuilder builder = new StringBuilder("ALTER TABLE ");
-          if (databaseLibrary == DatabaseLibrary.POSTGRESQL) {
-            builder.append('"');
-          }
-          builder.append(tableName);
-          if (databaseLibrary == DatabaseLibrary.POSTGRESQL) {
-            builder.append('"');
-          }
-          builder.append(" ADD ");
-          String columnDefinition = table.getColumnDefinition();
-          DatabaseType databaseType = dao.getConnectionSource().getDatabaseType();
-          if (columnDefinition == null) {
-            List<String> dummy = List.of();
-            databaseType.appendColumnArg(table.getTableName(), builder, table, dummy, dummy, dummy, dummy);
-          } else {
-            databaseType.appendEscapedEntityName(builder, table.getColumnName());
-            builder.append(" ").append(columnDefinition).append(" ");
-          }
-
-          dao.executeRawNoArgs(builder.toString());
-        } catch (SQLException e) {
-          throw new SQLRuntimeException(e);
+    tables.forEach(table -> {
+      try {
+        StringBuilder builder = new StringBuilder("ALTER TABLE ");
+        if (databaseLibrary == DatabaseLibrary.POSTGRESQL) {
+          builder.append('"');
         }
-      });
-    } catch (Exception e) {
-      throw new SQLRuntimeException(e);
-    }
+        builder.append(tableName);
+        if (databaseLibrary == DatabaseLibrary.POSTGRESQL) {
+          builder.append('"');
+        }
+        builder.append(" ADD ");
+        String columnDefinition = table.getColumnDefinition();
+        DatabaseType databaseType = dao.getConnectionSource().getDatabaseType();
+        if (columnDefinition == null) {
+          List<String> dummy = List.of();
+          databaseType.appendColumnArg(table.getTableName(), builder, table, dummy, dummy, dummy, dummy);
+        } else {
+          databaseType.appendEscapedEntityName(builder, table.getColumnName());
+          builder.append(" ").append(columnDefinition).append(" ");
+        }
+
+        dao.executeRawNoArgs(builder.toString());
+      } catch (SQLException e) {
+        throw new SQLRuntimeException(e);
+      }
+    });
   }
 
   public void cacheAuthUser(Player player) {
     String username = player.getUsername();
     String lowercaseUsername = username.toLowerCase(Locale.ROOT);
-    this.cachedAuthChecks.put(lowercaseUsername, new CachedSessionUser(System.currentTimeMillis(), player.getRemoteAddress().getAddress(), username));
+    this.cachedAuthChecks.put(lowercaseUsername,
+        new CachedSessionUser(System.currentTimeMillis(), player.getRemoteAddress().getAddress(), username));
   }
 
   public void removePlayerFromCache(String username) {
@@ -702,6 +809,10 @@ public class LimboAuth {
     this.premiumCache.remove(username);
   }
 
+  public void removeCachedAuthCheck(String username) {
+    this.cachedAuthChecks.remove(username.toLowerCase(Locale.ROOT));
+  }
+
   public boolean needAuth(Player player) {
     String username = player.getUsername();
     String lowercaseUsername = username.toLowerCase(Locale.ROOT);
@@ -709,24 +820,43 @@ public class LimboAuth {
       return true;
     } else {
       CachedSessionUser sessionUser = this.cachedAuthChecks.get(lowercaseUsername);
-      return !sessionUser.getInetAddress().equals(player.getRemoteAddress().getAddress()) || !sessionUser.getUsername().equals(username);
+
+      // Session süresi kontrolü
+      long sessionAge = System.currentTimeMillis() - sessionUser.getCheckTime();
+      if (sessionAge > Settings.IMP.MAIN.PURGE_CACHE_MILLIS) {
+        // Session expired
+        this.cachedAuthChecks.remove(lowercaseUsername);
+        return true;
+      }
+
+      // If IP_LIMIT_VALID_TIME is 0 (disabled), don't check IP address - only check
+      // username
+      if (Settings.IMP.MAIN.IP_LIMIT_VALID_TIME == 0) {
+        return !sessionUser.getUsername().equals(username);
+      }
+      // If IP limit is enabled, check both IP and username
+      return !sessionUser.getInetAddress().equals(player.getRemoteAddress().getAddress())
+          || !sessionUser.getUsername().equals(username);
     }
   }
 
   public void authPlayer(Player player) {
-    boolean isFloodgate = !Settings.IMP.MAIN.FLOODGATE_NEED_AUTH && this.floodgateApi.isFloodgatePlayer(player.getUniqueId());
+    boolean isFloodgate = !Settings.IMP.MAIN.FLOODGATE_NEED_AUTH
+        && this.floodgateApi.isFloodgatePlayer(player.getUniqueId());
     if (!isFloodgate && this.isForcedPreviously(player.getUsername()) && this.isPremium(player.getUsername())) {
       player.disconnect(this.reconnectKick);
       return;
     }
 
-    if (this.getBruteforceAttempts(player.getRemoteAddress().getAddress()) >= Settings.IMP.MAIN.BRUTEFORCE_MAX_ATTEMPTS) {
+    if (this
+        .getBruteforceAttempts(player.getRemoteAddress().getAddress()) >= Settings.IMP.MAIN.BRUTEFORCE_MAX_ATTEMPTS) {
       player.disconnect(this.bruteforceAttemptKick);
       return;
     }
 
     String nickname = player.getUsername();
-    if (!this.nicknameValidationPattern.matcher((isFloodgate) ? nickname.substring(this.floodgateApi.getPrefixLength()) : nickname).matches()) {
+    if (!this.nicknameValidationPattern
+        .matcher((isFloodgate) ? nickname.substring(this.floodgateApi.getPrefixLength()) : nickname).matches()) {
       player.disconnect(this.nicknameInvalidKick);
       return;
     }
@@ -735,7 +865,8 @@ public class LimboAuth {
     TaskEvent.Result result = TaskEvent.Result.NORMAL;
 
     // For Crafter CMS, handle authentication asynchronously
-    if (this.databaseLibrary == DatabaseLibrary.CRAFTER && this.crafterAuthHandler != null && this.crafterAuthHandler.isReady()) {
+    if (this.databaseLibrary == DatabaseLibrary.CRAFTER && this.crafterAuthHandler != null
+        && this.crafterAuthHandler.isReady()) {
       // Use Crafter CMS API to check if user exists - async
       this.crafterAuthHandler.checkUserExists(nickname)
           .thenAccept(registeredPlayer -> {
@@ -744,7 +875,7 @@ public class LimboAuth {
             } else {
               LOGGER.debug("User {} not found in Crafter CMS", nickname);
             }
-            
+
             // Proceed with auth flow after user check
             this.proceedWithAuthFlow(player, registeredPlayer, onlineMode, isFloodgate, result);
           })
@@ -756,7 +887,7 @@ public class LimboAuth {
           });
       return; // Exit early - async processing continues
     }
-    
+
     // Traditional database lookup
     RegisteredPlayer registeredPlayer = AuthSessionHandler.fetchInfo(this.playerDao, nickname);
     this.proceedWithAuthFlow(player, registeredPlayer, onlineMode, isFloodgate, result);
@@ -765,21 +896,23 @@ public class LimboAuth {
   /**
    * Proceed with the authentication flow after user check is complete.
    */
-  private void proceedWithAuthFlow(Player player, RegisteredPlayer registeredPlayer, boolean onlineMode, boolean isFloodgate, TaskEvent.Result baseResult) {
+  private void proceedWithAuthFlow(Player player, RegisteredPlayer registeredPlayer, boolean onlineMode,
+      boolean isFloodgate, TaskEvent.Result baseResult) {
     TaskEvent.Result result = baseResult;
-    
+
     // For offline-mode (force-offline-mode: true), don't do premium bypass
     // All players must enter password, regardless of premium status
     if (!Settings.IMP.MAIN.FORCE_OFFLINE_MODE && (onlineMode || isFloodgate)) {
       if (registeredPlayer == null || registeredPlayer.getHash().isEmpty()) {
         RegisteredPlayer nicknameRegisteredPlayer = registeredPlayer;
-        
+
         // For Crafter CMS, skip traditional UUID lookup since we don't have playerDao
         if (this.playerDao != null) {
           registeredPlayer = AuthSessionHandler.fetchInfo(this.playerDao, player.getUniqueId());
         }
 
-        if (nicknameRegisteredPlayer != null && registeredPlayer == null && nicknameRegisteredPlayer.getHash().isEmpty()) {
+        if (nicknameRegisteredPlayer != null && registeredPlayer == null
+            && nicknameRegisteredPlayer.getHash().isEmpty()) {
           registeredPlayer = nicknameRegisteredPlayer;
           registeredPlayer.setPremiumUuid(player.getUniqueId().toString());
           try {
@@ -804,7 +937,8 @@ public class LimboAuth {
         }
 
         if (registeredPlayer == null || registeredPlayer.getHash().isEmpty()) {
-          // Due to the current connection state, which is set to LOGIN there, we cannot send the packets.
+          // Due to the current connection state, which is set to LOGIN there, we cannot
+          // send the packets.
           // We need to wait for the PLAY connection state to set.
           this.postLoginTasks.put(player.getUniqueId(), () -> {
             if (onlineMode) {
@@ -839,8 +973,10 @@ public class LimboAuth {
       Consumer<TaskEvent> eventConsumer = (event) -> this.sendPlayer(event, null);
       eventManager.fire(new PreRegisterEvent(eventConsumer, result, player)).thenAcceptAsync(eventConsumer);
     } else {
-      Consumer<TaskEvent> eventConsumer = (event) -> this.sendPlayer(event, ((PreAuthorizationEvent) event).getPlayerInfo());
-      eventManager.fire(new PreAuthorizationEvent(eventConsumer, result, player, registeredPlayer)).thenAcceptAsync(eventConsumer);
+      Consumer<TaskEvent> eventConsumer = (event) -> this.sendPlayer(event,
+          ((PreAuthorizationEvent) event).getPlayerInfo());
+      eventManager.fire(new PreAuthorizationEvent(eventConsumer, result, player, registeredPlayer))
+          .thenAcceptAsync(eventConsumer);
     }
   }
 
@@ -890,7 +1026,8 @@ public class LimboAuth {
     String lowercaseNickname = player.getUsername().toLowerCase(Locale.ROOT);
     UpdateBuilder<RegisteredPlayer, String> updateBuilder = this.playerDao.updateBuilder();
     updateBuilder.where().eq(RegisteredPlayer.LOWERCASE_NICKNAME_FIELD, lowercaseNickname);
-    updateBuilder.updateColumnValue(RegisteredPlayer.LOGIN_IP_FIELD, player.getRemoteAddress().getAddress().getHostAddress());
+    updateBuilder.updateColumnValue(RegisteredPlayer.LOGIN_IP_FIELD,
+        IPAddressUtil.getRealIPQuiet(player));
     updateBuilder.updateColumnValue(RegisteredPlayer.LOGIN_DATE_FIELD, System.currentTimeMillis());
     updateBuilder.update();
 
@@ -902,12 +1039,14 @@ public class LimboAuth {
           .update(Longs.toByteArray(issueTime))
           .digest();
 
-      player.sendPluginMessage(this.getChannelIdentifier(player), Bytes.concat(Longs.toByteArray(issueTime), Longs.toByteArray(hash)));
+      player.sendPluginMessage(this.getChannelIdentifier(player),
+          Bytes.concat(Longs.toByteArray(issueTime), Longs.toByteArray(hash)));
     }
   }
 
   public ChannelIdentifier getChannelIdentifier(Player player) {
-    return player.getProtocolVersion().compareTo(ProtocolVersion.MINECRAFT_1_13) >= 0 ? MOD_CHANNEL : LEGACY_MOD_CHANNEL;
+    return player.getProtocolVersion().compareTo(ProtocolVersion.MINECRAFT_1_13) >= 0 ? MOD_CHANNEL
+        : LEGACY_MOD_CHANNEL;
   }
 
   private boolean validateScheme(JsonElement jsonElement, List<String> scheme) {
@@ -931,10 +1070,10 @@ public class LimboAuth {
     try {
       HttpResponse<String> response = this.client.send(
           HttpRequest.newBuilder()
-              .uri(URI.create(String.format(Settings.IMP.MAIN.ISPREMIUM_AUTH_URL, URLEncoder.encode(nickname, StandardCharsets.UTF_8))))
+              .uri(URI.create(String.format(Settings.IMP.MAIN.ISPREMIUM_AUTH_URL,
+                  URLEncoder.encode(nickname, StandardCharsets.UTF_8))))
               .build(),
-          HttpResponse.BodyHandlers.ofString()
-      );
+          HttpResponse.BodyHandlers.ofString());
 
       int statusCode = response.statusCode();
 
@@ -946,7 +1085,8 @@ public class LimboAuth {
 
       if (Settings.IMP.MAIN.STATUS_CODE_USER_EXISTS.contains(statusCode)
           && this.validateScheme(jsonElement, Settings.IMP.MAIN.USER_EXISTS_JSON_VALIDATOR_FIELDS)) {
-        return new PremiumResponse(PremiumState.PREMIUM_USERNAME, ((JsonObject) jsonElement).get(Settings.IMP.MAIN.JSON_UUID_FIELD).getAsString());
+        return new PremiumResponse(PremiumState.PREMIUM_USERNAME,
+            ((JsonObject) jsonElement).get(Settings.IMP.MAIN.JSON_UUID_FIELD).getAsString());
       }
 
       if (Settings.IMP.MAIN.STATUS_CODE_USER_NOT_EXISTS.contains(statusCode)
@@ -963,12 +1103,15 @@ public class LimboAuth {
 
   public PremiumResponse isPremiumInternal(String nickname) {
     // Check if using Crafter CMS
-    if (this.databaseLibrary == DatabaseLibrary.CRAFTER && this.crafterAPIClient != null && this.crafterAPIClient.isInitialized()) {
+    if (this.databaseLibrary == DatabaseLibrary.CRAFTER && this.crafterAPIClient != null
+        && this.crafterAPIClient.isInitialized()) {
       try {
         // Use Crafter CMS API to check user existence
-        // Note: IP address is not needed for user existence check, only for auth operations
-        CompletableFuture<CrafterResponse> future = this.crafterAPIClient.checkUserExists(nickname);
-        
+        // Note: IP address is not needed for user existence check, only for auth
+        // operations
+        // Async çağrı, sonucu kullanılmıyor, future değişkeni kaldırıldı
+        this.crafterAPIClient.checkUserExists(nickname);
+
         // For now, we'll return UNKNOWN since we can't block here
         // The actual check will be done asynchronously
         // TODO: Implement proper async handling for Crafter CMS premium checks
@@ -978,13 +1121,13 @@ public class LimboAuth {
         return new PremiumResponse(PremiumState.ERROR);
       }
     }
-    
+
     // Fallback to traditional database check
     if (this.playerDao == null) {
       LOGGER.warn("Player DAO is null, cannot check premium status");
       return new PremiumResponse(PremiumState.ERROR);
     }
-    
+
     try {
       QueryBuilder<RegisteredPlayer, String> crackedCountQuery = this.playerDao.queryBuilder();
       crackedCountQuery.where()
@@ -1023,7 +1166,7 @@ public class LimboAuth {
       LOGGER.debug("Premium UUID check not yet implemented for Crafter CMS");
       return false;
     }
-    
+
     try {
       QueryBuilder<RegisteredPlayer, String> premiumCountQuery = this.playerDao.queryBuilder();
       premiumCountQuery.where()
@@ -1203,6 +1346,10 @@ public class LimboAuth {
     return this.databaseLibrary;
   }
 
+  public LanguageManager getLanguageManager() {
+    return this.languageManager;
+  }
+
   private static void setLogger(Logger logger) {
     LOGGER = logger;
   }
@@ -1310,7 +1457,7 @@ public class LimboAuth {
     }
 
     public int getAttempts() {
-      return  this.attempts;
+      return this.attempts;
     }
   }
 
@@ -1335,7 +1482,8 @@ public class LimboAuth {
       if (uuid.contains("-")) {
         this.uuid = UUID.fromString(uuid);
       } else {
-        this.uuid = new UUID(Long.parseUnsignedLong(uuid.substring(0, 16), 16), Long.parseUnsignedLong(uuid.substring(16), 16));
+        this.uuid = new UUID(Long.parseUnsignedLong(uuid.substring(0, 16), 16),
+            Long.parseUnsignedLong(uuid.substring(16), 16));
       }
     }
 

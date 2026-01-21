@@ -64,27 +64,28 @@ public class TotpCommand extends RatelimitedCommand {
   private final Component wrong;
   private final Component crackedCommand;
 
-  public TotpCommand(Dao<RegisteredPlayer, String> playerDao) {
+  public TotpCommand(LimboAuth plugin, Dao<RegisteredPlayer, String> playerDao) {
+    super(plugin);
     this.playerDao = playerDao;
 
     Serializer serializer = LimboAuth.getSerializer();
-    this.notPlayer = serializer.deserialize(Settings.IMP.MAIN.STRINGS.NOT_PLAYER);
-    this.usage = serializer.deserialize(Settings.IMP.MAIN.STRINGS.TOTP_USAGE);
+    this.notPlayer = serializer.deserialize(plugin.getLanguageManager().getMessages().notPlayer);
+    this.usage = serializer.deserialize(plugin.getLanguageManager().getMessages().totpUsage);
     this.needPassword = Settings.IMP.MAIN.TOTP_NEED_PASSWORD;
-    this.notRegistered = serializer.deserialize(Settings.IMP.MAIN.STRINGS.NOT_REGISTERED);
-    this.wrongPassword = serializer.deserialize(Settings.IMP.MAIN.STRINGS.WRONG_PASSWORD);
-    this.alreadyEnabled = serializer.deserialize(Settings.IMP.MAIN.STRINGS.TOTP_ALREADY_ENABLED);
-    this.errorOccurred = serializer.deserialize(Settings.IMP.MAIN.STRINGS.ERROR_OCCURRED);
-    this.successful = serializer.deserialize(Settings.IMP.MAIN.STRINGS.TOTP_SUCCESSFUL);
+    this.notRegistered = serializer.deserialize(plugin.getLanguageManager().getMessages().notRegistered);
+    this.wrongPassword = serializer.deserialize(plugin.getLanguageManager().getMessages().wrongPassword);
+    this.alreadyEnabled = serializer.deserialize(plugin.getLanguageManager().getMessages().totpEnabledAlready);
+    this.errorOccurred = serializer.deserialize(plugin.getLanguageManager().getMessages().errorOccurred);
+    this.successful = serializer.deserialize(plugin.getLanguageManager().getMessages().totpSuccessful);
     this.issuer = Settings.IMP.MAIN.TOTP_ISSUER;
     this.qrGeneratorUrl = Settings.IMP.MAIN.QR_GENERATOR_URL;
-    this.qr = serializer.deserialize(Settings.IMP.MAIN.STRINGS.TOTP_QR);
-    this.token = Settings.IMP.MAIN.STRINGS.TOTP_TOKEN;
+    this.qr = serializer.deserialize(plugin.getLanguageManager().getMessages().totpQr);
+    this.token = plugin.getLanguageManager().getMessages().totpToken;
     this.recoveryCodesAmount = Settings.IMP.MAIN.TOTP_RECOVERY_CODES_AMOUNT;
-    this.recovery = Settings.IMP.MAIN.STRINGS.TOTP_RECOVERY;
-    this.disabled = serializer.deserialize(Settings.IMP.MAIN.STRINGS.TOTP_DISABLED);
-    this.wrong = serializer.deserialize(Settings.IMP.MAIN.STRINGS.TOTP_WRONG);
-    this.crackedCommand = serializer.deserialize(Settings.IMP.MAIN.STRINGS.CRACKED_COMMAND);
+    this.recovery = plugin.getLanguageManager().getMessages().totpRecovery;
+    this.disabled = serializer.deserialize(plugin.getLanguageManager().getMessages().totpDisabled);
+    this.wrong = serializer.deserialize(plugin.getLanguageManager().getMessages().totpWrong);
+    this.crackedCommand = serializer.deserialize(plugin.getLanguageManager().getMessages().crackedCommand);
   }
 
   // TODO: Rewrite.

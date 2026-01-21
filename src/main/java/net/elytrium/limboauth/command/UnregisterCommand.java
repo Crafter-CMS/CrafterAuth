@@ -47,18 +47,19 @@ public class UnregisterCommand extends RatelimitedCommand {
   private final Component crackedCommand;
 
   public UnregisterCommand(LimboAuth plugin, Dao<RegisteredPlayer, String> playerDao) {
+    super(plugin);
     this.plugin = plugin;
     this.playerDao = playerDao;
 
     Serializer serializer = LimboAuth.getSerializer();
     this.confirmKeyword = Settings.IMP.MAIN.CONFIRM_KEYWORD;
-    this.notPlayer = serializer.deserialize(Settings.IMP.MAIN.STRINGS.NOT_PLAYER);
-    this.notRegistered = serializer.deserialize(Settings.IMP.MAIN.STRINGS.NOT_REGISTERED);
-    this.successful = serializer.deserialize(Settings.IMP.MAIN.STRINGS.UNREGISTER_SUCCESSFUL);
-    this.errorOccurred = serializer.deserialize(Settings.IMP.MAIN.STRINGS.ERROR_OCCURRED);
-    this.wrongPassword = serializer.deserialize(Settings.IMP.MAIN.STRINGS.WRONG_PASSWORD);
-    this.usage = serializer.deserialize(Settings.IMP.MAIN.STRINGS.UNREGISTER_USAGE);
-    this.crackedCommand = serializer.deserialize(Settings.IMP.MAIN.STRINGS.CRACKED_COMMAND);
+    this.notPlayer = serializer.deserialize(plugin.getLanguageManager().getMessages().notPlayer);
+    this.notRegistered = serializer.deserialize(plugin.getLanguageManager().getMessages().notRegistered);
+    this.successful = serializer.deserialize(plugin.getLanguageManager().getMessages().unregisterSuccessful);
+    this.errorOccurred = serializer.deserialize(plugin.getLanguageManager().getMessages().errorOccurred);
+    this.wrongPassword = serializer.deserialize(plugin.getLanguageManager().getMessages().wrongPassword);
+    this.usage = serializer.deserialize(plugin.getLanguageManager().getMessages().unregisterUsage);
+    this.crackedCommand = serializer.deserialize(plugin.getLanguageManager().getMessages().crackedCommand);
   }
 
   @Override

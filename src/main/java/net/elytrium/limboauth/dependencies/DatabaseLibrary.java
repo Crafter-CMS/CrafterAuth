@@ -137,6 +137,11 @@ public enum DatabaseLibrary {
       throws ReflectiveOperationException, IOException, SQLException, URISyntaxException {
     if (this.driver.getOriginal() == null) {
       IsolatedClassLoader classLoader = new IsolatedClassLoader(new URL[] {this.baseLibrary.getClassLoaderURL()});
+      try {
+        // ...existing code...
+      } finally {
+        try { classLoader.close(); } catch (Exception ignored) {}
+      }
       Class<?> driverClass = classLoader.loadClass(
           switch (this) {
             case H2_LEGACY_V1, H2 -> "org.h2.Driver";

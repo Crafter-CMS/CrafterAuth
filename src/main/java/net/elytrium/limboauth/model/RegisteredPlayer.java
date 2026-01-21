@@ -34,6 +34,7 @@ public class RegisteredPlayer {
   public static final String HASH_FIELD = "HASH";
   public static final String IP_FIELD = "IP";
   public static final String LOGIN_IP_FIELD = "LOGINIP";
+  public static final String EMAIL_FIELD = "EMAIL";
   public static final String TOTP_TOKEN_FIELD = "TOTPTOKEN";
   public static final String REG_DATE_FIELD = "REGDATE";
   public static final String LOGIN_DATE_FIELD = "LOGINDATE";
@@ -54,6 +55,9 @@ public class RegisteredPlayer {
 
   @DatabaseField(columnName = IP_FIELD, index = true)
   private String ip;
+
+  @DatabaseField(columnName = EMAIL_FIELD)
+  private String email;
 
   @DatabaseField(columnName = TOTP_TOKEN_FIELD)
   private String totpToken = "";
@@ -78,11 +82,13 @@ public class RegisteredPlayer {
 
   @Deprecated
   public RegisteredPlayer(String nickname, String lowercaseNickname,
-      String hash, String ip, String totpToken, Long regDate, String uuid, String premiumUuid, String loginIp, Long loginDate) {
+      String hash, String ip, String email, String totpToken, Long regDate, String uuid, String premiumUuid,
+      String loginIp, Long loginDate) {
     this.nickname = nickname;
     this.lowercaseNickname = lowercaseNickname;
     this.hash = hash;
     this.ip = ip;
+    this.email = email;
     this.totpToken = totpToken;
     this.regDate = regDate;
     this.uuid = uuid;
@@ -156,6 +162,16 @@ public class RegisteredPlayer {
 
   public String getIP() {
     return this.ip == null ? "" : this.ip;
+  }
+
+  public RegisteredPlayer setEmail(String email) {
+    this.email = email;
+
+    return this;
+  }
+
+  public String getEmail() {
+    return this.email == null ? "" : this.email;
   }
 
   public RegisteredPlayer setTotpToken(String totpToken) {

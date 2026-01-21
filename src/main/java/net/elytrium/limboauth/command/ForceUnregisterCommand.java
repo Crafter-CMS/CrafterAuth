@@ -46,15 +46,16 @@ public class ForceUnregisterCommand extends RatelimitedCommand {
   private final Component usage;
 
   public ForceUnregisterCommand(LimboAuth plugin, ProxyServer server, Dao<RegisteredPlayer, String> playerDao) {
+    super(plugin);
     this.plugin = plugin;
     this.server = server;
     this.playerDao = playerDao;
 
     Serializer serializer = LimboAuth.getSerializer();
-    this.kick = serializer.deserialize(Settings.IMP.MAIN.STRINGS.FORCE_UNREGISTER_KICK);
-    this.successful = Settings.IMP.MAIN.STRINGS.FORCE_UNREGISTER_SUCCESSFUL;
-    this.notSuccessful = Settings.IMP.MAIN.STRINGS.FORCE_UNREGISTER_NOT_SUCCESSFUL;
-    this.usage = serializer.deserialize(Settings.IMP.MAIN.STRINGS.FORCE_UNREGISTER_USAGE);
+    this.kick = serializer.deserialize(plugin.getLanguageManager().getMessages().forceUnregisterKick);
+    this.successful = plugin.getLanguageManager().getMessages().forceUnregisterSuccessful;
+    this.notSuccessful = plugin.getLanguageManager().getMessages().forceUnregisterNotSuccessful;
+    this.usage = serializer.deserialize(plugin.getLanguageManager().getMessages().forceUnregisterUsage);
   }
 
   @Override

@@ -42,14 +42,15 @@ public class ForceRegisterCommand extends RatelimitedCommand {
   private final Component incorrectNickname;
 
   public ForceRegisterCommand(LimboAuth plugin, Dao<RegisteredPlayer, String> playerDao) {
+    super(plugin);
     this.plugin = plugin;
     this.playerDao = playerDao;
 
-    this.successful = Settings.IMP.MAIN.STRINGS.FORCE_REGISTER_SUCCESSFUL;
-    this.notSuccessful = Settings.IMP.MAIN.STRINGS.FORCE_REGISTER_NOT_SUCCESSFUL;
-    this.usage = LimboAuth.getSerializer().deserialize(Settings.IMP.MAIN.STRINGS.FORCE_REGISTER_USAGE);
-    this.takenNickname = LimboAuth.getSerializer().deserialize(Settings.IMP.MAIN.STRINGS.FORCE_REGISTER_TAKEN_NICKNAME);
-    this.incorrectNickname = LimboAuth.getSerializer().deserialize(Settings.IMP.MAIN.STRINGS.FORCE_REGISTER_INCORRECT_NICKNAME);
+    this.successful = plugin.getLanguageManager().getMessages().forceRegisterSuccessful;
+    this.notSuccessful = plugin.getLanguageManager().getMessages().forceRegisterNotSuccessful;
+    this.usage = LimboAuth.getSerializer().deserialize(plugin.getLanguageManager().getMessages().forceRegisterUsage);
+    this.takenNickname = LimboAuth.getSerializer().deserialize(plugin.getLanguageManager().getMessages().forceRegisterTakenNickname);
+    this.incorrectNickname = LimboAuth.getSerializer().deserialize(plugin.getLanguageManager().getMessages().forceRegisterIncorrectNickname);
   }
 
   @Override
