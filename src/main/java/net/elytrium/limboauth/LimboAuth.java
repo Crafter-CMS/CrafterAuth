@@ -78,6 +78,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import net.elytrium.limboauth.discord.DiscordBot;
+import java.io.FileReader;
+import org.yaml.snakeyaml.Yaml;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -114,11 +117,10 @@ import net.elytrium.limboauth.floodgate.FloodgateApiHolder;
 import net.elytrium.limboauth.handler.AuthSessionHandler;
 import net.elytrium.limboauth.lang.LanguageManager;
 import net.elytrium.limboauth.listener.AuthListener;
-// import net.elytrium.limboauth.staff.StaffDatabase;
+import net.elytrium.limboauth.staff.StaffDatabase;
 import net.elytrium.limboauth.listener.BackendEndpointsListener;
 import net.elytrium.limboauth.model.RegisteredPlayer;
 import net.elytrium.limboauth.model.SQLRuntimeException;
-import net.elytrium.limboauth.util.IPAddressUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.ComponentSerializer;
 import net.kyori.adventure.title.Title;
@@ -136,9 +138,49 @@ import org.slf4j.Logger;
     @Dependency(id = "floodgate", optional = true)
 })
 public class LimboAuth {
-
-  public void shutdown() {
-  }
+        private StaffDatabase staffDatabase;
+        private net.elytrium.limboauth.staff.StaffAuthenticationHandler staffAuthHandler;
+        
+        public StaffDatabase getStaffDatabase() {
+          return staffDatabase;
+        }
+        
+        public net.elytrium.limboauth.staff.StaffAuthenticationHandler getStaffAuthHandler() {
+          return staffAuthHandler;
+        }
+      private void ensureDiscordConfigExists() {
+        // dataDirectory, plugin'in ana dizinidir (ör: plugins/crafterauth)
+        Path discordConfigPath = dataDirectory.resolve("discord.yml");
+        if (!Files.exists(discordConfigPath)) {
+          try {
+            Files.createDirectories(dataDirectory);
+            String example = "token: \"\"\n" +
+                             "staff_login_timeout: 60\n" +
+                             "log_channel_id: \"\"\n" +
+                             "staff: []\n";
+            Files.write(discordConfigPath, example.getBytes(StandardCharsets.UTF_8));
+            if (LOGGER != null) {
+              LOGGER.info("Discord config file created: discord.yml");
+            }
+          } catch (IOException e) {
+            if (LOGGER != null) {
+              LOGGER.error("Could not create discord.yml: " + e.getMessage());
+            }
+          }
+        }
+      }
+    private DiscordBot discordBot;
+    public DiscordBot getDiscordBot() { return discordBot; }
+    public void shutdown() {
+        if (discordBot != null) {
+            discordBot.shutdown();
+            LOGGER.info("Discord botu kapatıldı.");
+        }
+        if (staffAuthHandler != null) {
+            net.elytrium.limboauth.staff.StaffLoginRequest.shutdown();
+            LOGGER.info("Staff authentication handler kapatıldı.");
+        }
+    }
 
   public static final Ratelimiter<InetAddress> RATELIMITER = Ratelimiters.createWithMilliseconds(5000);
 
@@ -171,7 +213,7 @@ public class LimboAuth {
   private final LimboFactory factory;
   private final FloodgateApiHolder floodgateApi;
   private final Map<String, AuthSessionHandler> authenticatingPlayers;
-
+  
   private LanguageManager languageManager;
 
   @Nullable
@@ -200,7 +242,7 @@ public class LimboAuth {
 
   private static String replacePlaceholders(String message) {
     return message.replace("{PRFX}", Settings.IMP.PREFIX)
-        .replace("{NL}", "\n");
+                  .replace("{NL}", "\n");
   }
 
   @Inject
@@ -213,6 +255,7 @@ public class LimboAuth {
     this.dataDirectory = dataDirectory;
 
     // dataDirectory atandıktan sonra config dosyasını kontrol et
+    ensureDiscordConfigExists();
 
     // dataDirectoryFile ve configFile atamaları
     this.dataDirectoryFile = dataDirectory.toFile();
@@ -223,68 +266,102 @@ public class LimboAuth {
     this.factory = (LimboFactory) this.server.getPluginManager().getPlugin("limboapi")
         .flatMap(PluginContainer::getInstance).orElseThrow();
     if (this.server.getPluginManager().getPlugin("floodgate").isPresent()) {
-      this.floodgateApi = new FloodgateApiHolder();
+        this.floodgateApi = new FloodgateApiHolder();
     } else {
-      this.floodgateApi = null;
+        this.floodgateApi = null;
     }
 
-    this.languageManager = new LanguageManager(dataDirectory.toFile(), logger, "tr");
+    // discord.yml'den staff_db_path oku, yoksa staff.json kullan
+    String staffDbPath = "staff.json";
+    File discordConfigFile = dataDirectory.resolve("discord.yml").toFile();
+    if (discordConfigFile.exists()) {
+      try (FileReader reader = new FileReader(discordConfigFile)) {
+        Yaml yaml = new Yaml();
+        Map<String, Object> config = yaml.load(reader);
+        if (config != null && config.containsKey("staff_db_path")) {
+          staffDbPath = String.valueOf(config.get("staff_db_path"));
+        }
+      } catch (Exception ignored) {}
+    }
+    this.staffDatabase = new StaffDatabase(new File(this.dataDirectoryFile, staffDbPath));
+
+    // Discord bot başlatıcı (plugins/crafterauth/discord.yml)
+    try {
+      File discordConfigFile2 = new File(this.dataDirectoryFile, "discord.yml");
+      if (discordConfigFile2.exists()) {
+        Yaml yaml = new Yaml();
+        try (FileReader reader = new FileReader(discordConfigFile2)) {
+          Map<String, Object> config = yaml.load(reader);
+          String token = (String) config.get("token");
+          if (token != null && !token.isEmpty()) {
+            this.discordBot = new DiscordBot(token);
+            this.discordBot.start();
+            LOGGER.info("Discord botu başlatıldı.");
+          } else {
+            LOGGER.warn("Discord bot token'ı plugins/crafterauth/discord.yml dosyasında bulunamadı veya boş.");
+          }
+        }
+      } else {
+        LOGGER.warn("Discord bot ayar dosyası (plugins/crafterauth/discord.yml) bulunamadı. Discord botu başlatılmadı.");
+      }
+    } catch (Exception e) {
+      LOGGER.error("Discord bot başlatılırken hata oluştu: " + e.getMessage());
+    }
   }
 
   @Subscribe
   public void onProxyInitialization(ProxyInitializeEvent event) {
-    System.setProperty("com.j256.simplelogging.level", "ERROR");
-    // try (FileReader reader = new FileReader(discordConfigFile)) {
-    // Map<String, Object> config = yaml.load(reader);
-
-    // // Environment variable desteği
-    // String token = (String) config.get("token");
-    // if (token == null || token.isEmpty()) {
-    // token = System.getenv("CRAFTERAUTH_DISCORD_TOKEN");
-    // if (token != null && !token.isEmpty()) {
-    // LOGGER.info("Discord token environment variable'dan okundu.");
-    // }
-    // }
-
-    // if (token != null && !token.isEmpty()) {
-    // this.discordBot = new DiscordBot(token);
-    // this.discordBot.setLogger(msg -> LOGGER.info(msg));
-    // this.discordBot.start();
-    // LOGGER.info("Discord botu başlatıldı.");
-
-    // // Staff database başlat
-    // this.staffDatabase = new StaffDatabase(discordConfigFile);
-    // LOGGER.info("Staff veritabanı yüklendi: " +
-    // this.staffDatabase.getStaffList().size() + " kayıt");
-
-    // // Staff authentication handler başlat
-    // long timeoutSeconds = 60; // Default 60 saniye
-    // if (config.containsKey("staff_login_timeout")) {
-    // timeoutSeconds = ((Number) config.get("staff_login_timeout")).longValue();
-    // }
-    // this.staffAuthHandler = new
-    // net.elytrium.limboauth.staff.StaffAuthenticationHandler(
-    // this.discordBot, this.staffDatabase, timeoutSeconds);
-    // this.staffAuthHandler.setLogger(msg -> LOGGER.info(msg));
-    // this.staffAuthHandler.setMessageConfig(new
-    // net.elytrium.limboauth.staff.MessageConfig(this));
-    // LOGGER.info("Staff authentication handler başlatıldı (timeout: " +
-    // timeoutSeconds + "s)");
-
-    // } else {
-    // LOGGER.warn("Discord bot token'ı plugins/crafterauth/discord.yml dosyasında
-    // bulunamadı veya boş.");
-    // }
-    // }
-    // } else {
-    // ensureDiscordConfigExists();
-    // LOGGER
-    // .warn("Discord bot ayar dosyası (plugins/crafterauth/discord.yml) bulunamadı.
-    // Discord botu başlatılmadı.");
-    // }
-    // } catch (Exception e) {
-    // LOGGER.error("Discord bot başlatılırken hata oluştu: " + e.getMessage(), e);
-    // }
+    // Discord bot başlat (YAML ile)
+    try {
+      File discordConfigFile = new File(this.dataDirectoryFile, "discord.yml");
+      if (discordConfigFile.exists()) {
+        Yaml yaml = new Yaml();
+        try (FileReader reader = new FileReader(discordConfigFile)) {
+          Map<String, Object> config = yaml.load(reader);
+          
+          // Environment variable desteği
+          String token = (String) config.get("token");
+          if (token == null || token.isEmpty()) {
+            token = System.getenv("CRAFTERAUTH_DISCORD_TOKEN");
+            if (token != null && !token.isEmpty()) {
+              LOGGER.info("Discord token environment variable'dan okundu.");
+            }
+          }
+          
+          if (token != null && !token.isEmpty()) {
+            this.discordBot = new DiscordBot(token);
+            this.discordBot.setLogger(msg -> LOGGER.info(msg));
+            this.discordBot.start();
+            LOGGER.info("Discord botu başlatıldı.");
+            
+            // Staff database başlat
+            this.staffDatabase = new StaffDatabase(discordConfigFile);
+            LOGGER.info("Staff veritabanı yüklendi: " + this.staffDatabase.getStaffList().size() + " kayıt");
+            
+            // Staff authentication handler başlat
+            long timeoutSeconds = 60; // Default 60 saniye
+            if (config.containsKey("staff_login_timeout")) {
+              timeoutSeconds = ((Number) config.get("staff_login_timeout")).longValue();
+            }
+            this.staffAuthHandler = new net.elytrium.limboauth.staff.StaffAuthenticationHandler(
+              this.discordBot, this.staffDatabase, timeoutSeconds
+            );
+            this.staffAuthHandler.setLogger(msg -> LOGGER.info(msg));
+            this.staffAuthHandler.setMessageConfig(new net.elytrium.limboauth.staff.MessageConfig(this));
+            LOGGER.info("Staff authentication handler başlatıldı (timeout: " + timeoutSeconds + "s)");
+            
+          } else {
+            LOGGER.warn("Discord bot token'ı plugins/crafterauth/discord.yml dosyasında bulunamadı veya boş.");
+          }
+        }
+      } else {
+        ensureDiscordConfigExists();
+        LOGGER.warn("Discord bot ayar dosyası (plugins/crafterauth/discord.yml) bulunamadı. Discord botu başlatılmadı.");
+      }
+    } catch (Exception e) {
+      LOGGER.error("Discord bot başlatılırken hata oluştu: " + e.getMessage(), e);
+    }
+// ...existing code...
     System.setProperty("com.j256.simplelogging.level", "ERROR");
 
     try {
@@ -294,8 +371,7 @@ public class LimboAuth {
       this.server.shutdown();
     }
 
-    Metrics metrics = this.metricsFactory.make(this,
-        13700);
+    Metrics metrics = this.metricsFactory.make(this, 13700);
     metrics
         .addCustomChart(new SimplePie("floodgate_auth", () -> String.valueOf(Settings.IMP.MAIN.FLOODGATE_NEED_AUTH)));
     metrics
@@ -380,13 +456,14 @@ public class LimboAuth {
   @SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH", justification = "LEGACY_AMPERSAND can't be null in velocity.")
   public void reload() {
     Settings.IMP.reload(this.configFile, Settings.IMP.PREFIX);
-
+    
     // Initialize or reload language manager
     if (this.languageManager == null) {
       this.languageManager = new LanguageManager(
           this.dataDirectoryFile,
           LOGGER,
-          Settings.IMP.MAIN.LANG);
+          Settings.IMP.MAIN.LANG
+      );
     } else {
       this.languageManager.loadLanguage();
     }
@@ -438,13 +515,10 @@ public class LimboAuth {
           Settings.IMP.MAIN.PREMIUM_TITLE_SETTINGS.toTimes());
     }
 
-    this.bruteforceAttemptKick = SERIALIZER
-        .deserialize(replacePlaceholders(this.languageManager.getMessages().loginWrongPasswordKick));
-    this.nicknameInvalidKick = SERIALIZER
-        .deserialize(replacePlaceholders(this.languageManager.getMessages().nicknameInvalidKick));
+    this.bruteforceAttemptKick = SERIALIZER.deserialize(replacePlaceholders(this.languageManager.getMessages().loginWrongPasswordKick));
+    this.nicknameInvalidKick = SERIALIZER.deserialize(replacePlaceholders(this.languageManager.getMessages().nicknameInvalidKick));
     this.reconnectKick = SERIALIZER.deserialize(replacePlaceholders(this.languageManager.getMessages().reconnectKick));
-    this.registrationsDisabledKick = SERIALIZER
-        .deserialize(replacePlaceholders(this.languageManager.getMessages().registrationsDisabledKick));
+    this.registrationsDisabledKick = SERIALIZER.deserialize(replacePlaceholders(this.languageManager.getMessages().registrationsDisabledKick));
 
     if (Settings.IMP.MAIN.CHECK_PASSWORD_STRENGTH) {
       try {
@@ -507,7 +581,7 @@ public class LimboAuth {
 
           String websiteId = this.crafterAPIClient.getWebsite().getId();
           String maskedId = websiteId.length() > 7 ? websiteId.substring(0, 7) + "****" : websiteId;
-
+          
           LOGGER.info(" ┌─────────────────────────────────────────────────────┐");
           LOGGER.info(" │  🏢  Website: " + String.format("%-38s", this.crafterAPIClient.getWebsite().getName()) + "│");
           LOGGER.info(" │  🆔  Site ID: " + String.format("%-38s", maskedId) + "│");
@@ -517,7 +591,7 @@ public class LimboAuth {
 
           // Check license expiration if available
           String expiresAt = this.crafterAPIClient.getWebsite().getLicenseExpiresAt();
-
+          
           if (expiresAt != null && !expiresAt.isEmpty()) {
             try {
               // Parse ISO 8601 date format (e.g., "2025-12-31T23:59:59.000Z")
@@ -545,14 +619,10 @@ public class LimboAuth {
             LOGGER.info(" ┌─────────────────────────────────────────────────────┐");
             LOGGER.info(" │              📊  API SAĞLIK RAPORU                  │");
             LOGGER.info(" ├─────────────────────────────────────────────────────┤");
-            LOGGER.info(
-                " │  " + (report.licenseValid ? "✅" : "❌") + "  Lisans Doğrulama                               │");
-            LOGGER.info(
-                " │  " + (report.signInService ? "✅" : "❌") + "  Giriş Servisi                                  │");
-            LOGGER.info(
-                " │  " + (report.signUpService ? "✅" : "❌") + "  Kayıt Servisi                                  │");
-            LOGGER.info(
-                " │  " + (report.userCheckService ? "✅" : "❌") + "  Kullanıcı Servisi                              │");
+            LOGGER.info(" │  " + (report.licenseValid ? "✅" : "❌") + "  Lisans Doğrulama                               │");
+            LOGGER.info(" │  " + (report.signInService ? "✅" : "❌") + "  Giriş Servisi                                  │");
+            LOGGER.info(" │  " + (report.signUpService ? "✅" : "❌") + "  Kayıt Servisi                                  │");
+            LOGGER.info(" │  " + (report.userCheckService ? "✅" : "❌") + "  Kullanıcı Servisi                              │");
             LOGGER.info(" └─────────────────────────────────────────────────────┘");
             LOGGER.info("");
 
@@ -762,8 +832,27 @@ public class LimboAuth {
     Set<FieldType> tables = new HashSet<>();
     Collections.addAll(tables, tableInfo.getFieldTypes());
 
+    String findSql = null;
+    String database = Settings.IMP.DATABASE.DATABASE;
     String tableName = tableInfo.getTableName();
     DatabaseLibrary databaseLibrary = Settings.IMP.DATABASE.STORAGE_TYPE;
+    switch (databaseLibrary) {
+      case SQLITE: {
+        findSql = "SELECT name FROM PRAGMA_TABLE_INFO('" + tableName + "')";
+        break;
+      }
+      case H2_LEGACY_V1:
+      case H2:
+      case MYSQL:
+      case POSTGRESQL:
+      case MARIADB:
+      case CRAFTER:
+        // Gerekli ise ilgili SQL sorguları eklenebilir
+        break;
+      default:
+        // Bilinmeyen türler için işlem yapılmaz
+        break;
+    }
 
     tables.forEach(table -> {
       try {
@@ -820,7 +909,7 @@ public class LimboAuth {
       return true;
     } else {
       CachedSessionUser sessionUser = this.cachedAuthChecks.get(lowercaseUsername);
-
+      
       // Session süresi kontrolü
       long sessionAge = System.currentTimeMillis() - sessionUser.getCheckTime();
       if (sessionAge > Settings.IMP.MAIN.PURGE_CACHE_MILLIS) {
@@ -828,9 +917,8 @@ public class LimboAuth {
         this.cachedAuthChecks.remove(lowercaseUsername);
         return true;
       }
-
-      // If IP_LIMIT_VALID_TIME is 0 (disabled), don't check IP address - only check
-      // username
+      
+      // If IP_LIMIT_VALID_TIME is 0 (disabled), don't check IP address - only check username
       if (Settings.IMP.MAIN.IP_LIMIT_VALID_TIME == 0) {
         return !sessionUser.getUsername().equals(username);
       }
@@ -1027,7 +1115,7 @@ public class LimboAuth {
     UpdateBuilder<RegisteredPlayer, String> updateBuilder = this.playerDao.updateBuilder();
     updateBuilder.where().eq(RegisteredPlayer.LOWERCASE_NICKNAME_FIELD, lowercaseNickname);
     updateBuilder.updateColumnValue(RegisteredPlayer.LOGIN_IP_FIELD,
-        IPAddressUtil.getRealIPQuiet(player));
+        player.getRemoteAddress().getAddress().getHostAddress());
     updateBuilder.updateColumnValue(RegisteredPlayer.LOGIN_DATE_FIELD, System.currentTimeMillis());
     updateBuilder.update();
 

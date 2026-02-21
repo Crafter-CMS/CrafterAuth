@@ -181,7 +181,6 @@ public class CrafterAPIClient {
       JsonObject requestBody = new JsonObject();
       requestBody.addProperty("username", username);
       requestBody.addProperty("password", password);
-      requestBody.addProperty("ip", ipAddress);
 
       String endpoint = this.apiUrl + "/website/v2/" + this.website.getId() + "/auth/signin";
 
@@ -190,7 +189,9 @@ public class CrafterAPIClient {
           .header("Content-Type", "application/json")
           .header("X-API-Secret", this.secretKey)
           .header("X-Forwarded-For", ipAddress)
-          .header("X-Real-IP", ipAddress);
+          .header("X-Real-IP", ipAddress)
+          .header("CF-Connecting-IP", ipAddress)
+          .header("True-Client-IP", ipAddress);
 
       String originValue = this.getOriginHeaderValue();
       if (originValue != null) {
@@ -246,7 +247,6 @@ public class CrafterAPIClient {
       requestBody.addProperty("email", email);
       requestBody.addProperty("password", password);
       requestBody.addProperty("confirm_password", passwordConfirm);
-      requestBody.addProperty("ip", ipAddress);
 
       String endpoint = this.apiUrl + "/website/v2/" + this.website.getId() + "/auth/signup";
 
@@ -255,7 +255,9 @@ public class CrafterAPIClient {
           .header("Content-Type", "application/json")
           .header("X-API-Secret", this.secretKey)
           .header("X-Forwarded-For", ipAddress)
-          .header("X-Real-IP", ipAddress);
+          .header("X-Real-IP", ipAddress)
+          .header("CF-Connecting-IP", ipAddress)
+          .header("True-Client-IP", ipAddress);
 
       String originValue = this.getOriginHeaderValue();
       if (originValue != null) {
@@ -355,30 +357,16 @@ public class CrafterAPIClient {
    */
   private CrafterResponse parseResponse(HttpResponse<String> response) {
     try {
-      // Always try to parse JSON first, as even errors might be in JSON format
-      JsonObject jsonResponse = null;
-      try {
-        jsonResponse = JsonParser.parseString(response.body()).getAsJsonObject();
-      } catch (Exception ignored) {
-        // Not a JSON response, will handle based on status code
-      }
+      if (response.statusCode() == 200) {
+        JsonObject jsonResponse = JsonParser.parseString(response.body()).getAsJsonObject();
 
-      if (jsonResponse != null) {
-        // We have a JSON response
         boolean success = jsonResponse.has("success") && jsonResponse.get("success").getAsBoolean();
         String message = jsonResponse.has("message") ? jsonResponse.get("message").getAsString() : "";
-        String type = jsonResponse.has("type") ? jsonResponse.get("type").getAsString() : null;
 
-        // Return structured response even for errors
-        return new CrafterResponse(success, message, type, null);
+        return new CrafterResponse(success, message);
       } else {
-        // Fallback for non-JSON responses
-        if (response.statusCode() == 200) {
-          return new CrafterResponse(false, "Invalid JSON response");
-        } else {
-          this.logger.error("Response parsing failed - HTTP error status: " + response.statusCode());
-          return new CrafterResponse(false, "HTTP " + response.statusCode() + ": " + response.body());
-        }
+        this.logger.error("Response parsing failed - HTTP error status: " + response.statusCode());
+        return new CrafterResponse(false, "HTTP " + response.statusCode() + ": " + response.body());
       }
     } catch (Exception e) {
       this.logger.error("Response parsing failed with exception: " + e.getMessage());

@@ -75,7 +75,7 @@ dependencies {
 
     implementation("org.bstats:bstats-velocity:$bstatsVersion")
     // Discord bot için JDA
-    // implementation("net.dv8tion:JDA:5.0.0-beta.24")
+    implementation("net.dv8tion:JDA:5.0.0-beta.24")
 
     compileOnly("com.github.spotbugs:spotbugs-annotations:$spotbugsVersion")
 }

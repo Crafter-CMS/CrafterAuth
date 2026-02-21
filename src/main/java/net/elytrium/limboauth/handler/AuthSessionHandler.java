@@ -58,7 +58,6 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import net.elytrium.limboauth.dependencies.DatabaseLibrary;
-import net.elytrium.limboauth.util.IPAddressUtil;
 
 public class AuthSessionHandler implements LimboSessionHandler {
 
@@ -157,7 +156,7 @@ public class AuthSessionHandler implements LimboSessionHandler {
       // For Crafter CMS, skip IP limit checks since we don't have playerDao
       if (this.playerDao != null) {
         try {
-          String ip = IPAddressUtil.getRealIP(this.proxyPlayer);
+          String ip = this.proxyPlayer.getRemoteAddress().getAddress().getHostAddress();
           List<RegisteredPlayer> alreadyRegistered = this.playerDao.queryForEq(RegisteredPlayer.IP_FIELD, ip);
           if (alreadyRegistered != null) {
             int sizeOfValidRegistrations = alreadyRegistered.size();
@@ -243,7 +242,6 @@ public class AuthSessionHandler implements LimboSessionHandler {
       Command command = Command.parse(args[0]);
       if (command == Command.REGISTER && !this.totpState && this.playerInfo == null) {
         String password = args[1];
-
         if (this.checkPasswordsRepeat(args) && this.checkPasswordLength(password)
             && this.checkPasswordStrength(password)) {
           // For Crafter CMS, ask for email first
@@ -298,7 +296,7 @@ public class AuthSessionHandler implements LimboSessionHandler {
           passwordValid = password.length() > 0 && checkPassword(password, this.playerInfo, this.playerDao);
         } else {
           // Crafter CMS authentication - get IP address and authenticate via API
-          String ipAddress = IPAddressUtil.getRealIP(this.proxyPlayer);
+          String ipAddress = this.proxyPlayer.getRemoteAddress().getAddress().getHostAddress();
 
           // Get the plugin instance to access CrafterAuthHandler
           LimboAuth plugin = (LimboAuth) this.plugin;
@@ -445,9 +443,9 @@ public class AuthSessionHandler implements LimboSessionHandler {
     instances.remove(this.proxyPlayer.getUniqueId());
 
     // Staff pending request temizle
-    // if (this.plugin.getStaffAuthHandler() != null) {
-    // this.plugin.getStaffAuthHandler().cleanupPlayer(this.proxyPlayer.getUniqueId());
-    // }
+    if (this.plugin.getStaffAuthHandler() != null) {
+      this.plugin.getStaffAuthHandler().cleanupPlayer(this.proxyPlayer.getUniqueId());
+    }
   }
 
   private void handleEmailInput(String email) {
@@ -462,7 +460,7 @@ public class AuthSessionHandler implements LimboSessionHandler {
     this.awaitingEmail = false;
 
     // Proceed with Crafter CMS registration
-    String ipAddress = IPAddressUtil.getRealIP(this.proxyPlayer);
+    String ipAddress = this.proxyPlayer.getRemoteAddress().getAddress().getHostAddress();
     LimboAuth plugin = (LimboAuth) this.plugin;
 
     if (plugin.getCrafterAuthHandler() != null && plugin.getCrafterAuthHandler().isReady()) {
@@ -486,9 +484,7 @@ public class AuthSessionHandler implements LimboSessionHandler {
               .fire(new PostRegisterEvent(this::finishAuth, this.player, this.playerInfo, this.tempPassword))
               .thenAcceptAsync(this::finishAuth);
         } else {
-          // Send specific error message from the response
-          this.proxyPlayer.sendMessage(Component.text("§c" + response.getMessage()));
-
+          this.proxyPlayer.sendMessage(Component.text("§cKayıt başarısız. Lütfen tekrar deneyin."));
           // Reset state for retry
           this.awaitingEmail = false;
           this.pendingPassword = null;
